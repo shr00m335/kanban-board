@@ -1,6 +1,10 @@
 import React from "react";
 
-const Sidebar = (): React.ReactNode => {
+interface SidebarProp {
+  onCreateClick: () => void;
+}
+
+const Sidebar = ({ onCreateClick }: SidebarProp): React.ReactNode => {
   return (
     <div className="w-[234px] h-full bg-white grid grid-rows-[52px_auto_52px]">
       {/* Title */}
@@ -11,7 +15,10 @@ const Sidebar = (): React.ReactNode => {
       <div className="overflow-y-auto select-none">
         <p className="px-3 py-1 text-lg">Item 1</p>
       </div>
-      <button className="text-left px-3 my-auto text-gray-400 select-none hover:text-gray-600">
+      <button
+        className="text-left px-3 my-auto text-gray-400 select-none hover:text-gray-600"
+        onClick={onCreateClick}
+      >
         + Add Project
       </button>
     </div>
