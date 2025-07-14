@@ -10,6 +10,8 @@
   font-style: normal;
   font-variation-settings: "wdth" 100, "YTLC" 500;
   cursor: default;
+  padding: 0;
+  margin: 0;
 }
 
 button {
