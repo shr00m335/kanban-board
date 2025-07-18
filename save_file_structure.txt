@@ -1,0 +1,21 @@
+|   Description   |
+| Number of bytes |
+|     Remarks     |
+
+---------------------------------------------------------------------------------------------------------------------------
+| Version | Project Name Length |  Project Name  |    Project Description Length    |          Project Description        |
+|    1    |          1          |    1 - 256     |               1 - n              |                 0 - n               |
+|         |                     | Max length 256 | Variable Length Quantity Encoded | Based on Project Description Length |
+---------------------------------------------------------------------------------------------------------------------------
+|             Number of Boards              | Board n Name Length |  Board n Name  |          Board n List Count      |
+|                  1 - n                    |          1          |     1 - 256    |                 1 - n            |
+|     Variable Length Quantity Encoded      |                     | Max Length 256 | Variable Length Quantity Encoded |
+-----------------------------------------------------------------------------------------------------------------------
+| Board n List n Name Length | Board n List n Name | Board n List n Color |     Board n List n Items Count   |
+|             1              |       1 - 256       |          3           |              1 - n               |   
+|                            |                     |       Color Hex      | Variable Length Quantity Encoded |
+--------------------------------------------------------------------------------------------------------------
+| Board n List n Item n Content Length |           Board n List n Item n Content       |
+|                1 - n                 |                        1 - n                  |
+|   Variable Length Quantity Encoded   | Based on Board n List n Item n Content Length |
+----------------------------------------------------------------------------------------
