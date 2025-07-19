@@ -1,3 +1,5 @@
+use std::cmp;
+
 pub struct BinaryWriter {
     bytes: Vec<u8>,
 }
@@ -30,6 +32,20 @@ impl BinaryWriter {
                 break;
             }
         }
+    }
+
+    pub fn write_string(&mut self, string: &str) {
+        let bytes: &[u8] = string.as_bytes();
+        self.write_bytes(bytes);
+    }
+
+    pub fn write_string_with_length(&mut self, string: &str, is_256_max: bool) {
+        if is_256_max {
+            self.write_byte(cmp::min(0xFF, string.len()) as u8); // Cap string length to 255
+        } else {
+            self.write_leb128(string.len() as u32);
+        }
+        self.write_string(string);
     }
 
     pub fn as_bytes(&self) -> &[u8] {
@@ -81,6 +97,35 @@ mod test {
         let mut bw: BinaryWriter = BinaryWriter::new();
         bw.write_leb128(16384);
         assert_eq!(&[0x80, 0x80, 0x01], bw.as_bytes());
+    }
+
+    #[test]
+    fn test_write_string() {
+        let mut bw: BinaryWriter = BinaryWriter::new();
+        bw.write_string("Hello World!");
+        let expected_bytes: &[u8] = &[
+            0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64, 0x21,
+        ];
+        assert_eq!(expected_bytes, bw.as_bytes());
+    }
+
+    #[test]
+    fn test_write_string_with_length() {
+        let test_string: &str = "This is a very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very test string";
+        // Test 256 max
+        let mut bw: BinaryWriter = BinaryWriter::new();
+        bw.write_string_with_length(test_string, true);
+        let mut expected_bytes: Vec<u8> = Vec::new();
+        expected_bytes.push(0xB5);
+        expected_bytes.extend_from_slice(test_string.as_bytes());
+        assert_eq!(expected_bytes, bw.as_bytes());
+        // Test leb128
+        let mut bw: BinaryWriter = BinaryWriter::new();
+        bw.write_string_with_length(test_string, false);
+        let mut expected_bytes: Vec<u8> = Vec::new();
+        expected_bytes.extend_from_slice(&[0xB5, 0x01]);
+        expected_bytes.extend_from_slice(test_string.as_bytes());
+        assert_eq!(expected_bytes, bw.as_bytes());
     }
 
     #[test]
