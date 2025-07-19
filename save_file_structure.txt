@@ -3,9 +3,9 @@
 |     Remarks     |
 
 ---------------------------------------------------------------------------------------------------------------------------
-| Version | Project Name Length |  Project Name  |    Project Description Length    |          Project Description        |
-|    1    |          1          |    1 - 256     |               1 - n              |                 0 - n               |
-|         |                     | Max length 256 | Variable Length Quantity Encoded | Based on Project Description Length |
+| Version | Project ID | Project Name Length |  Project Name  |    Project Description Length    |          Project Description        |
+|    1    |     32     |          1          |    1 - 256     |               1 - n              |                 0 - n               |
+|         |   UUID v4  |                     | Max length 256 | Variable Length Quantity Encoded | Based on Project Description Length |
 ---------------------------------------------------------------------------------------------------------------------------
 |             Number of Boards              | Board n Name Length |  Board n Name  |          Board n List Count      |
 |                  1 - n                    |          1          |     1 - 256    |                 1 - n            |
