@@ -1,4 +1,5 @@
 mod file_system;
+mod kanban;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]

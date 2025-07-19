@@ -65,12 +65,7 @@ impl BinaryWriter {
 
 #[cfg(test)]
 mod test {
-    use core::error;
-    use std::{
-        fs::File,
-        io::Read,
-        os::{macos::fs::MetadataExt, unix::fs::PermissionsExt},
-    };
+    use std::{fs::File, io::Read, os::unix::fs::PermissionsExt};
 
     use super::*;
     use tempdir::TempDir;
