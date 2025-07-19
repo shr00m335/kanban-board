@@ -1,4 +1,7 @@
 use std::cmp;
+use std::fs;
+use std::io::Seek;
+use std::path::Path;
 
 pub struct BinaryWriter {
     bytes: Vec<u8>,
@@ -51,11 +54,26 @@ impl BinaryWriter {
     pub fn as_bytes(&self) -> &[u8] {
         return &self.bytes;
     }
+
+    pub fn write_to_file(&self, path: &Path) -> std::io::Result<()> {
+        use std::io::Write;
+        let mut file = fs::OpenOptions::new().write(true).create(true).open(path)?;
+        file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        file.write_all(&self.bytes)
+    }
 }
 
 #[cfg(test)]
 mod test {
+    use core::error;
+    use std::{
+        fs::File,
+        io::Read,
+        os::{macos::fs::MetadataExt, unix::fs::PermissionsExt},
+    };
+
     use super::*;
+    use tempdir::TempDir;
 
     #[test]
     fn test_write_byte() {
@@ -138,5 +156,38 @@ mod test {
             bytes: [0x01, 0x02, 0x03].to_vec(),
         };
         assert_eq!(&[0x01, 0x02, 0x03], bw.as_bytes());
+    }
+
+    #[test]
+    fn test_write_to_file_create() {
+        let test_content: [u8; 3] = [0x01, 0x02, 0x03];
+        let dir = TempDir::new("kanban-test").expect("Failed to create directory");
+        let path = dir.path().join("test.bin");
+        let mut bw = BinaryWriter::new();
+        bw.write_bytes(&test_content);
+        let result = bw.write_to_file(&path);
+        assert!(result.is_ok());
+        assert!(fs::exists(&path).expect("Failed to check whether file exists"));
+        let mut file = File::open(&path).expect("Failed to open file");
+        let mut file_content: [u8; 3] = [0; 3];
+        file.read(&mut file_content).expect("Failed to read file");
+        assert_eq!(test_content, file_content);
+    }
+
+    #[test]
+    fn test_write_to_file_readonly() {
+        let test_content: [u8; 3] = [0x01, 0x02, 0x03];
+        let dir = TempDir::new("kanban-test").expect("Failed to create directory");
+        fs::set_permissions(dir.path(), fs::Permissions::from_mode(0o555))
+            .expect("Failed to set permission");
+        let path = dir.path().join("test.bin");
+        let mut bw = BinaryWriter::new();
+        bw.write_bytes(&test_content);
+        let result = bw.write_to_file(&path);
+        assert!(result.is_err());
+        assert_eq!(
+            std::io::ErrorKind::PermissionDenied,
+            result.unwrap_err().kind()
+        );
     }
 }
