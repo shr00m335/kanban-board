@@ -1,4 +1,11 @@
 use crate::file_system::binary_writer::BinaryWriter;
+use crate::kanban::board::Board;
+
+pub struct Project {
+    name: String,
+    description: String,
+    boards: Vec<Board>,
+}
 
 const FILE_VERSION: u8 = 0;
 
