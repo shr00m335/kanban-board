@@ -4,7 +4,7 @@ use crate::kanban::board::Board;
 use uuid::Uuid;
 
 pub struct Project {
-    id: String,
+    id: [u8; 16],
     name: String,
     description: String,
     boards: Vec<Board>,
@@ -74,6 +74,25 @@ fn write_project_to_file<P: AppPathProvider>(
     bw.write_to_file(&project_path)
         .map_err(|e| KanbanError::from_source(KanbanErrorKind::IoError, e))?;
     Ok(())
+}
+
+pub fn create_project<P: AppPathProvider>(
+    app: &P,
+    name: &str,
+    description: &str,
+) -> Result<Project, KanbanError> {
+    let mut bw: BinaryWriter = BinaryWriter::new();
+    let id: Uuid = Uuid::new_v4();
+    write_project_header(&mut bw, &id, name, description);
+    bw.write_byte(0x00); // Write initial board count
+    write_project_to_file(app, &bw)?;
+    let project = Project {
+        id: id.as_bytes().clone(),
+        name: name.to_string(),
+        description: description.to_string(),
+        boards: Vec::new(),
+    };
+    Ok(project)
 }
 
 #[cfg(test)]
@@ -206,5 +225,28 @@ mod test {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(KanbanErrorKind::IoError, err.kind);
+    }
+
+    #[test]
+    fn test_create_project() {
+        // tauri env
+        let mock = tauri::test::mock_app();
+        let app = mock.app_handle();
+        // Test data
+        let result = create_project(app, "Test Project", "Test Description");
+        // Test result
+        assert!(result.is_ok());
+        let project = result.unwrap();
+        assert_eq!("Test Project", project.name);
+        assert_eq!("Test Description", project.description);
+        assert_eq!(0, project.boards.len());
+        let file_name: String = project.id.iter().map(|b| format!("{:02X}", b)).collect();
+        let project_path = Manager::path(app)
+            .app_data_dir()
+            .expect("Failed to get data path")
+            .join(PROJECT_PATH)
+            .join(file_name);
+        assert!(fs::exists(&project_path).expect("Failed to check exists"));
+        fs::remove_file(project_path).expect("Failed to remove file");
     }
 }
