@@ -1,12 +1,45 @@
+import { invoke } from "@tauri-apps/api/core";
+import { useAtom } from "jotai";
+import React from "react";
 import { IoClose } from "react-icons/io5";
+import { CommandResult } from "../models/commandResult";
+import { BasicProjectInfo, Project } from "../models/project";
+import { allProjectsAtom } from "../stores/projectStore";
 
 interface CreateProjectPopupProp {
+  showBanner: (success: boolean, message: string) => void;
   onCloseClick: () => void;
 }
 
 const CreateProjectPopup = ({
+  showBanner,
   onCloseClick,
 }: CreateProjectPopupProp): JSX.Element => {
+  const [projects, setProjects] = useAtom(allProjectsAtom);
+
+  const [name, setName] = React.useState<string>("");
+  const [description, setDescription] = React.useState<string>("");
+
+  const createProject = async (): Promise<void> => {
+    console.log("Creating project");
+    const result = await invoke<CommandResult<Project>>(
+      "create_project_command",
+      { name, description }
+    );
+    if (!result.success) {
+      showBanner(false, result.message ?? "No error message");
+      return;
+    }
+    const projectInfo: BasicProjectInfo = {
+      id: result.data?.id ?? [],
+      name: result.data?.name ?? "",
+      description: result.data?.description ?? "",
+    };
+    setProjects([...projects, projectInfo]);
+    showBanner(true, `Successfully created project: ${projectInfo.name}`);
+    onCloseClick();
+  };
+
   return (
     <div className="absolute top-0 left-0 w-screen h-screen bg-black/50 flex">
       <div className="w-3/5 h-3/5 bg-white m-auto relative p-4 rounded-xl">
@@ -19,11 +52,17 @@ const CreateProjectPopup = ({
           <input
             type="text"
             className="bg-[#EFEFEF] w-full text-lg px-2 py-0.5 rounded-lg mt-1"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
           />
         </div>
         <div className="mt-4">
           <p className="text-lg">Project Description:</p>
-          <textarea className="bg-[#EFEFEF] w-full h-40 text-lg px-2 py-0.5 rounded-lg mt-1 resize-none" />
+          <textarea
+            className="bg-[#EFEFEF] w-full h-40 text-lg px-2 py-0.5 rounded-lg mt-1 resize-none"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
         </div>
         <div className="flex w-min ml-auto mt-10">
           <button
@@ -32,7 +71,10 @@ const CreateProjectPopup = ({
           >
             Cancel
           </button>
-          <button className="bg-blue-600 text-white w-40 py-1 text-xl rounded-xl hover:bg-blue-500">
+          <button
+            className="bg-blue-600 text-white w-40 py-1 text-xl rounded-xl hover:bg-blue-500"
+            onClick={createProject}
+          >
             Create
           </button>
         </div>
