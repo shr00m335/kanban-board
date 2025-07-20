@@ -34,7 +34,7 @@ function App() {
       <div
         className={`w-min h-12 text-white absolute bottom-0 left-1/2 -translate-x-1/2 rounded-t-2xl flex items-center px-6 transition-transform duration-300 ${
           showBanner ? "translate-y-0" : "translate-y-12"
-        } ${bannerSuccess ? "bg-green-500" : "bg-red-500"}`}
+        } ${bannerSuccess ? "bg-green-700" : "bg-red-500"}`}
       >
         {bannerSuccess ? (
           <FaCheckCircle size={28} />
