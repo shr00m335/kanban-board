@@ -1,3 +1,4 @@
+mod commands;
 mod errors;
 mod file_system;
 mod kanban;

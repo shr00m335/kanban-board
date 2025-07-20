@@ -3,6 +3,7 @@ use crate::file_system::binary_writer::BinaryWriter;
 use crate::kanban::board::Board;
 use uuid::Uuid;
 
+#[derive(Debug)]
 pub struct Project {
     id: [u8; 16],
     name: String,
@@ -81,6 +82,19 @@ pub fn create_project<P: AppPathProvider>(
     name: &str,
     description: &str,
 ) -> Result<Project, KanbanError> {
+    // Check project name and description
+    if name.len() == 0 || description.len() == 0 {
+        return Err(KanbanError::new(
+            KanbanErrorKind::ProjectError,
+            "Empty Name or Description: The name and description of the project must not be empty",
+        ));
+    }
+    if name.len() > 256 {
+        return Err(KanbanError::new(
+            KanbanErrorKind::ProjectError,
+            "Name too long: Project name must be between 1 and 256 characters",
+        ));
+    }
     let mut bw: BinaryWriter = BinaryWriter::new();
     let id: Uuid = Uuid::new_v4();
     write_project_header(&mut bw, &id, name, description);
@@ -248,5 +262,80 @@ mod test {
             .join(file_name);
         assert!(fs::exists(&project_path).expect("Failed to check exists"));
         fs::remove_file(project_path).expect("Failed to remove file");
+    }
+
+    #[test]
+    fn test_create_project_empty_name_and_description() {
+        // tauri env
+        let mock = tauri::test::mock_app();
+        let app = mock.app_handle();
+        // Test data (empty name)
+        let result = create_project(app, "", "Test Description");
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        assert_eq!(KanbanErrorKind::ProjectError, error.kind);
+        assert_eq!(
+            "Empty Name or Description: The name and description of the project must not be empty",
+            error.message
+        );
+        // Test data (empty description)
+        let result = create_project(app, "Test Project", "");
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        assert_eq!(KanbanErrorKind::ProjectError, error.kind);
+        assert_eq!(
+            "Empty Name or Description: The name and description of the project must not be empty",
+            error.message
+        );
+    }
+
+    #[test]
+    fn test_create_project_name_too_long() {
+        // tauri env
+        let mock = tauri::test::mock_app();
+        let app = mock.app_handle();
+        // Test data (empty name)
+        let result = create_project(
+            app,
+            &(0..257).map(|_| "X").collect::<String>(),
+            "Test Description",
+        );
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        assert_eq!(KanbanErrorKind::ProjectError, error.kind);
+        assert_eq!(
+            "Name too long: Project name must be between 1 and 256 characters",
+            error.message
+        );
+    }
+
+    #[test]
+    fn test_create_project_write_to_file_error() {
+        // Mock app handle
+        struct MockAppPathProvider {
+            path: MockPath,
+        }
+
+        impl AppPathProvider for MockAppPathProvider {
+            type Path = MockPath;
+            fn path(&self) -> &Self::Path {
+                &self.path
+            }
+        }
+        struct MockPath;
+        impl PathProvider for MockPath {
+            fn app_data_dir(
+                &self,
+            ) -> Result<std::path::PathBuf, Box<dyn std::error::Error + Send + Sync>> {
+                Err("tauri path error".into())
+            }
+        }
+        // Test
+        let mock_app = MockAppPathProvider { path: MockPath };
+        let result = create_project(&mock_app, "Test Project", "Test Description");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(KanbanErrorKind::TauriError, err.kind);
+        assert_eq!("tauri path error", err.message);
     }
 }
