@@ -1,10 +1,15 @@
+import { useAtomValue } from "jotai";
 import React from "react";
+import { allProjectsAtom } from "../stores/projectStore";
 
 interface SidebarProp {
   onCreateClick: () => void;
 }
 
 const Sidebar = ({ onCreateClick }: SidebarProp): React.ReactNode => {
+  const projects = useAtomValue(allProjectsAtom);
+  console.log(projects);
+
   return (
     <div className="w-[234px] h-full bg-white grid grid-rows-[52px_auto_52px]">
       {/* Title */}
@@ -12,9 +17,11 @@ const Sidebar = ({ onCreateClick }: SidebarProp): React.ReactNode => {
         <span className="text-blue-600">Kanban</span> Board
       </h1>
       {/* Items */}
-      <div className="overflow-y-auto select-none">
-        <p className="px-3 py-1 text-lg">Item 1</p>
-      </div>
+      {projects.map((project) => (
+        <div className="overflow-y-auto select-none" key={project.id.join("")}>
+          <p className="px-3 py-1 text-lg">{project.name}</p>
+        </div>
+      ))}
       <button
         className="text-left px-3 my-auto text-gray-400 select-none hover:text-gray-600"
         onClick={onCreateClick}
