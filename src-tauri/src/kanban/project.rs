@@ -1,7 +1,6 @@
 use crate::errors::kanban_error::{KanbanError, KanbanErrorKind};
 use crate::file_system::binary_writer::BinaryWriter;
 use crate::kanban::board::Board;
-use tauri::Manager;
 use uuid::Uuid;
 
 pub struct Project {
@@ -9,6 +8,28 @@ pub struct Project {
     name: String,
     description: String,
     boards: Vec<Board>,
+}
+
+pub trait AppPathProvider {
+    type Path: PathProvider;
+    fn path(&self) -> &Self::Path;
+}
+
+pub trait PathProvider {
+    fn app_data_dir(&self) -> Result<std::path::PathBuf, Box<dyn std::error::Error + Send + Sync>>;
+}
+
+impl<R: tauri::Runtime> AppPathProvider for tauri::AppHandle<R> {
+    type Path = tauri::path::PathResolver<R>;
+    fn path(&self) -> &Self::Path {
+        tauri::Manager::path(self)
+    }
+}
+
+impl<R: tauri::Runtime> PathProvider for tauri::path::PathResolver<R> {
+    fn app_data_dir(&self) -> Result<std::path::PathBuf, Box<dyn std::error::Error + Send + Sync>> {
+        self.app_data_dir().map_err(|e| Box::new(e) as _)
+    }
 }
 
 const FILE_VERSION: u8 = 0;
@@ -25,8 +46,8 @@ fn write_project_header(bw: &mut BinaryWriter, id: &Uuid, name: &str, descriptio
     bw.write_string_with_length(description, false);
 }
 
-fn write_project_to_file<R: tauri::Runtime>(
-    app: &tauri::AppHandle<R>,
+fn write_project_to_file<P: AppPathProvider>(
+    app: &P,
     bw: &BinaryWriter,
 ) -> Result<(), KanbanError> {
     let file_content: &[u8] = bw.as_bytes();
@@ -46,7 +67,7 @@ fn write_project_to_file<R: tauri::Runtime>(
     let project_path = app
         .path()
         .app_data_dir()
-        .map_err(|e| KanbanError::from_source(KanbanErrorKind::TauriError, e))?
+        .map_err(|e| KanbanError::from_box_source(KanbanErrorKind::TauriError, e))?
         .join(PROJECT_PATH)
         .join(file_name);
     // Write to file
@@ -57,9 +78,10 @@ fn write_project_to_file<R: tauri::Runtime>(
 
 #[cfg(test)]
 mod test {
-    use std::fs;
-
     use super::*;
+    use std::{fs, os::unix::fs::PermissionsExt};
+    use tauri::Manager;
+    use tempdir::TempDir;
 
     #[test]
     fn test_write_project_header() {
@@ -89,8 +111,7 @@ mod test {
         let result = write_project_to_file(app, &bw);
         assert!(result.is_ok());
         let file_name: String = id.as_bytes().iter().map(|b| format!("{:02X}", b)).collect();
-        let project_path = app
-            .path()
+        let project_path = Manager::path(app)
             .app_data_dir()
             .expect("Failed to get data path")
             .join(PROJECT_PATH)
@@ -110,5 +131,80 @@ mod test {
         let result = write_project_to_file(app, &bw);
         assert!(result.is_err());
         assert_eq!(KanbanErrorKind::ProjectError, result.unwrap_err().kind);
+    }
+
+    #[test]
+    fn test_write_project_to_file_app_data_dir_error() {
+        // Mock app handle
+        struct MockAppPathProvider {
+            path: MockPath,
+        }
+
+        impl AppPathProvider for MockAppPathProvider {
+            type Path = MockPath;
+            fn path(&self) -> &Self::Path {
+                &self.path
+            }
+        }
+        struct MockPath;
+        impl PathProvider for MockPath {
+            fn app_data_dir(
+                &self,
+            ) -> Result<std::path::PathBuf, Box<dyn std::error::Error + Send + Sync>> {
+                Err("tauri path error".into())
+            }
+        }
+        // Test
+        let mock_app = MockAppPathProvider { path: MockPath };
+        let mut bw = BinaryWriter::new();
+        let id = Uuid::new_v4();
+        write_project_header(&mut bw, &id, "Test Project", "Test Description");
+        let result = write_project_to_file(&mock_app, &bw);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(KanbanErrorKind::TauriError, err.kind);
+        assert_eq!("tauri path error", err.message);
+    }
+
+    #[test]
+    fn test_write_project_to_file_readonly_dir() {
+        // Mock app handle
+        struct MockAppPathProvider {
+            path: MockPath,
+        }
+
+        impl AppPathProvider for MockAppPathProvider {
+            type Path = MockPath;
+            fn path(&self) -> &Self::Path {
+                &self.path
+            }
+        }
+        struct MockPath {
+            path: std::path::PathBuf,
+        }
+        impl PathProvider for MockPath {
+            fn app_data_dir(
+                &self,
+            ) -> Result<std::path::PathBuf, Box<dyn std::error::Error + Send + Sync>> {
+                Ok(self.path.clone())
+            }
+        }
+        // Create readonly dir
+        let readonly_dir = TempDir::new("kanban-test").expect("Failed to create directory");
+        fs::set_permissions(readonly_dir.path(), fs::Permissions::from_mode(0o555))
+            .expect("Failed to set permission");
+        // Test
+        let mock_app = MockAppPathProvider {
+            path: MockPath {
+                path: readonly_dir.path().to_path_buf(),
+            },
+        };
+        let mut bw = BinaryWriter::new();
+        let id = Uuid::new_v4();
+        write_project_header(&mut bw, &id, "Test Project", "Test Description");
+        let result = write_project_to_file(&mock_app, &bw);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(KanbanErrorKind::IoError, err.kind);
     }
 }

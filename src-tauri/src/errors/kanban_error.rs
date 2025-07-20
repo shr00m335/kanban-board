@@ -11,7 +11,7 @@ pub enum KanbanErrorKind {
 pub struct KanbanError {
     pub kind: KanbanErrorKind,
     pub message: String,
-    pub source: Option<Box<dyn Error>>,
+    pub source: Option<Box<dyn Error + Send + Sync>>,
 }
 
 impl KanbanError {
@@ -23,11 +23,19 @@ impl KanbanError {
         }
     }
 
-    pub fn from_source<E: Error + 'static>(kind: KanbanErrorKind, source: E) -> Self {
+    pub fn from_source<E: Error + 'static + Send + Sync>(kind: KanbanErrorKind, source: E) -> Self {
         KanbanError {
             kind,
             message: source.to_string(),
             source: Some(Box::new(source)),
+        }
+    }
+
+    pub fn from_box_source(kind: KanbanErrorKind, source: Box<dyn Error + Send + Sync>) -> Self {
+        KanbanError {
+            kind,
+            message: source.to_string(),
+            source: Some(source),
         }
     }
 }
@@ -40,7 +48,9 @@ impl fmt::Display for KanbanError {
 
 impl Error for KanbanError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        self.source.as_deref()
+        self.source
+            .as_ref()
+            .map(|e| e.as_ref() as &(dyn Error + 'static))
     }
 }
 
