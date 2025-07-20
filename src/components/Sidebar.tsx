@@ -8,7 +8,6 @@ interface SidebarProp {
 
 const Sidebar = ({ onCreateClick }: SidebarProp): React.ReactNode => {
   const projects = useAtomValue(allProjectsAtom);
-  console.log(projects);
 
   return (
     <div className="w-[234px] h-full bg-white grid grid-rows-[52px_auto_52px]">
@@ -17,11 +16,13 @@ const Sidebar = ({ onCreateClick }: SidebarProp): React.ReactNode => {
         <span className="text-blue-600">Kanban</span> Board
       </h1>
       {/* Items */}
-      {projects.map((project) => (
-        <div className="overflow-y-auto select-none" key={project.id.join("")}>
-          <p className="px-3 py-1 text-lg">{project.name}</p>
-        </div>
-      ))}
+      <div className="overflow-y-auto select-none">
+        {projects.map((project) => (
+          <p key={project.id.join("")} className="px-3 py-1 text-lg">
+            {project.name}
+          </p>
+        ))}
+      </div>
       <button
         className="text-left px-3 my-auto text-gray-400 select-none hover:text-gray-600"
         onClick={onCreateClick}
