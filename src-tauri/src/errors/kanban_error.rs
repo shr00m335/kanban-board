@@ -43,3 +43,47 @@ impl Error for KanbanError {
         self.source.as_deref()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_new() {
+        let error = KanbanError::new(KanbanErrorKind::ProjectError, "Project Test Error");
+        assert_eq!(KanbanErrorKind::ProjectError, error.kind);
+        assert_eq!("Project Test Error", error.message);
+        assert!(error.source.is_none());
+    }
+
+    #[test]
+    fn test_from_source() {
+        let source_error = std::io::Error::new(std::io::ErrorKind::NotFound, "Not Found Error");
+        let error = KanbanError::from_source(KanbanErrorKind::IoError, source_error);
+        assert_eq!(KanbanErrorKind::IoError, error.kind);
+        assert_eq!("Not Found Error", &error.message);
+        assert!(error.source.is_some());
+        let inner = error.source.unwrap();
+        let io_error = inner
+            .downcast_ref::<std::io::Error>()
+            .expect("Should be std::io::Error");
+        assert_eq!(std::io::ErrorKind::NotFound, io_error.kind());
+    }
+
+    #[test]
+    fn test_display_fmt() {
+        let error = KanbanError::new(KanbanErrorKind::ProjectError, "Project Error Test");
+        let formatted = format!("{}", error);
+        assert_eq!("[ProjectError] Project Error Test", &formatted);
+    }
+
+    #[test]
+    fn test_source_function() {
+        let source_error = std::io::Error::new(std::io::ErrorKind::Other, "inner test error");
+        let error = KanbanError::from_source(KanbanErrorKind::IoError, source_error);
+        let source = error.source();
+        assert!(source.is_some());
+        let source = source.unwrap();
+        assert_eq!("inner test error", &source.to_string());
+    }
+}
