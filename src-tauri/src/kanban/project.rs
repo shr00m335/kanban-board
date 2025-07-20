@@ -1,14 +1,15 @@
 use crate::errors::kanban_error::{KanbanError, KanbanErrorKind};
 use crate::file_system::binary_writer::BinaryWriter;
 use crate::kanban::board::Board;
+use serde;
 use uuid::Uuid;
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 pub struct Project {
-    id: [u8; 16],
-    name: String,
-    description: String,
-    boards: Vec<Board>,
+    pub id: [u8; 16],
+    pub name: String,
+    pub description: String,
+    pub boards: Vec<Board>,
 }
 
 pub trait AppPathProvider {

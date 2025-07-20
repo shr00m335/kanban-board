@@ -1,7 +1,8 @@
 pub mod project_commands;
 
+#[derive(Debug, serde::Serialize)]
 pub struct CommandResult<T> {
     pub success: bool,
-    pub data: T,
-    pub message: String,
+    pub data: Option<T>,
+    pub message: Option<String>,
 }
