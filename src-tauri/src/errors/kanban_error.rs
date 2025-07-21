@@ -5,6 +5,7 @@ pub enum KanbanErrorKind {
     IoError,
     TauriError,
     ProjectError,
+    TextError,
 }
 
 #[derive(Debug)]

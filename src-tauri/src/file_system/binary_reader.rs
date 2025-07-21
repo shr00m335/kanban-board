@@ -1,4 +1,5 @@
 use crate::errors::kanban_error::{KanbanError, KanbanErrorKind};
+use std::str;
 
 pub struct BinaryReader {
     bytes: Vec<u8>,
@@ -41,6 +42,15 @@ impl BinaryReader {
         self.address += length;
         Ok(bytes)
     }
+
+    pub fn next_string_by_length(&mut self, length: usize) -> Result<&str, KanbanError> {
+        self.check_bound(length)?;
+        let bytes: &[u8] = &self.bytes[self.address..self.address + length];
+        let str = str::from_utf8(bytes)
+            .map_err(|e| KanbanError::from_source(KanbanErrorKind::TextError, e))?;
+        self.address += length;
+        Ok(str)
+    }
 }
 
 #[cfg(test)]
@@ -78,5 +88,26 @@ mod test {
             "Failed to read project file: Out of bound (reading 4 out of 3)",
             err.message
         );
+    }
+
+    #[test]
+    fn test_next_string_by_length() {
+        let mut bytes: Vec<u8> = Vec::new();
+        bytes.extend_from_slice(&[
+            0x01, 0x02, 0x03, 0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x20, 0x57, 0x6F, 0x72, 0x6C, 0x64,
+            0x21, 0xFD, 0xFE, 0xFF, 0x04,
+        ]);
+        let mut br = BinaryReader { bytes, address: 3 };
+        assert_eq!(
+            "Hello World!",
+            br.next_string_by_length(12).expect("Failed to read string")
+        );
+        let result = br.next_string_by_length(3);
+        assert!(result.is_err());
+        assert_eq!(KanbanErrorKind::TextError, result.unwrap_err().kind);
+        br.next_bytes(3).expect("Failed to read bytes");
+        let result = br.next_string_by_length(3);
+        assert!(result.is_err());
+        assert_eq!(KanbanErrorKind::ProjectError, result.unwrap_err().kind);
     }
 }
