@@ -48,20 +48,27 @@ impl BinaryReader {
         Ok(bytes)
     }
 
-    pub fn next_string_by_length(&mut self, length: usize) -> Result<&str, KanbanError> {
+    pub fn next_string_by_length(&mut self, length: usize) -> Result<String, KanbanError> {
         self.check_bound(length)?;
         let bytes: &[u8] = &self.bytes[self.address..self.address + length];
-        let str = str::from_utf8(bytes)
-            .map_err(|e| KanbanError::from_source(KanbanErrorKind::TextError, e))?;
+        let s = str::from_utf8(bytes)
+            .map_err(|e| KanbanError::from_source(KanbanErrorKind::TextError, e))?
+            .to_string();
         self.address += length;
-        Ok(str)
+        Ok(s)
     }
 
     pub fn next_leb128_number(&mut self) -> Result<usize, KanbanError> {
+        let previous_address: usize = self.address;
         let mut result: usize = 0;
         let mut shift: u32 = 0;
         loop {
-            let byte = self.next_byte()?;
+            let byte_result = self.next_byte();
+            if byte_result.is_err() {
+                self.address = previous_address;
+                return Err(byte_result.unwrap_err());
+            }
+            let byte = byte_result.unwrap();
             result |= ((byte & 0x7F) as usize) << shift;
             if byte & 0x80 == 0 {
                 break;
@@ -69,6 +76,16 @@ impl BinaryReader {
             shift += 7;
         }
         Ok(result)
+    }
+    pub fn next_string(&mut self) -> Result<String, KanbanError> {
+        let previous_address: usize = self.address;
+        let len = self.next_leb128_number()?;
+        let result = self.next_string_by_length(len);
+        if result.is_err() {
+            self.address = previous_address;
+            return Err(result.unwrap_err());
+        }
+        Ok(result.unwrap())
     }
 }
 
@@ -179,5 +196,21 @@ mod test {
         );
         assert_eq!(0x00, br.next_byte().expect("Failed to read byte"));
         assert_eq!(0x01, br.next_byte().expect("Failed to read byte"));
+    }
+
+    #[test]
+    fn test_next_string() {
+        let mut br = BinaryReader::new(&[
+            0x0C, 0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x20, 0x57, 0x6F, 0x72, 0x6C, 0x64, 0x21, 0x03,
+            0xFD, 0xFE, 0xFF, 0x04,
+        ]);
+        assert_eq!(
+            "Hello World!",
+            br.next_string().expect("Failed to read string")
+        );
+        let result = br.next_string();
+        assert!(result.is_err());
+        assert_eq!(KanbanErrorKind::TextError, result.unwrap_err().kind);
+        assert_eq!(0x03, br.next_byte().expect("Failed to read byte"))
     }
 }
