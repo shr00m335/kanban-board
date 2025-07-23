@@ -1,6 +1,7 @@
 use crate::errors::kanban_error::{KanbanError, KanbanErrorKind};
-use std::str;
+use std::{fs, path::Path, str};
 
+#[derive(Debug)]
 pub struct BinaryReader {
     bytes: Vec<u8>,
     address: usize,
@@ -12,6 +13,11 @@ impl BinaryReader {
             bytes: bytes.to_vec(),
             address: 0,
         }
+    }
+
+    pub fn read_from_file(path: &Path) -> std::io::Result<Self> {
+        let bytes = fs::read(path)?;
+        Ok(BinaryReader::new(&bytes))
     }
 
     fn check_bound(&self, length: usize) -> Result<(), KanbanError> {
@@ -92,6 +98,30 @@ impl BinaryReader {
 #[cfg(test)]
 mod test {
     use super::*;
+    use tempdir::TempDir;
+
+    #[test]
+    fn test_read_from_file() {
+        let test_content: [u8; 3] = [0x01, 0x02, 0x03];
+        let dir = TempDir::new("kanban-test").expect("Failed to create directory");
+        let path = dir.path().join("test.bin");
+        fs::write(&path, &test_content).expect("Failed to create test file");
+        let mut br = BinaryReader::read_from_file(&path).expect("Failed to read file");
+        assert_eq!(
+            &test_content,
+            br.next_bytes(3).expect("Failed to read bytes")
+        );
+    }
+
+    #[test]
+    fn test_read_from_file_not_exists() {
+        let dir = TempDir::new("kanban-test").expect("Failed to create directory");
+        let path = dir.path().join("test.bin");
+        let result = BinaryReader::read_from_file(&path);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(std::io::ErrorKind::NotFound, err.kind());
+    }
 
     #[test]
     fn test_peek() {
