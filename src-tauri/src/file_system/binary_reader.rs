@@ -72,7 +72,10 @@ impl BinaryReader {
             let byte_result = self.next_byte();
             if byte_result.is_err() {
                 self.address = previous_address;
-                return Err(byte_result.unwrap_err());
+                return Err(KanbanError::new(
+                    KanbanErrorKind::NumberError,
+                    "Failed to parse LEB128 number: Badly formatted.",
+                ));
             }
             let byte = byte_result.unwrap();
             result |= ((byte & 0x7F) as usize) << shift;
@@ -131,6 +134,7 @@ mod test {
             bytes: test_bytes.to_vec(),
             address: 1,
         };
+        assert_eq!(0x02, br.peek().expect("Failed to peek"));
         let _ = br.next_bytes(2);
         let result = br.peek();
         assert!(result.is_err());
@@ -226,6 +230,19 @@ mod test {
         );
         assert_eq!(0x00, br.next_byte().expect("Failed to read byte"));
         assert_eq!(0x01, br.next_byte().expect("Failed to read byte"));
+    }
+
+    #[test]
+    fn test_next_leb128_number_bad_format() {
+        let mut br: BinaryReader = BinaryReader::new(&[0x80, 0x81, 0x82]);
+        let result = br.next_leb128_number();
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(KanbanErrorKind::NumberError, err.kind);
+        assert_eq!(
+            "Failed to parse LEB128 number: Badly formatted.",
+            err.message
+        );
     }
 
     #[test]
