@@ -56,6 +56,20 @@ impl BinaryReader {
         self.address += length;
         Ok(str)
     }
+
+    pub fn next_leb128_number(&mut self) -> Result<usize, KanbanError> {
+        let mut result: usize = 0;
+        let mut shift: u32 = 0;
+        loop {
+            let byte = self.next_byte()?;
+            result |= ((byte & 0x7F) as usize) << shift;
+            if byte & 0x80 == 0 {
+                break;
+            }
+            shift += 7;
+        }
+        Ok(result)
+    }
 }
 
 #[cfg(test)]
@@ -128,5 +142,42 @@ mod test {
         let result = br.next_string_by_length(3);
         assert!(result.is_err());
         assert_eq!(KanbanErrorKind::ProjectError, result.unwrap_err().kind);
+    }
+
+    #[test]
+    fn test_next_leb128_number() {
+        // Test 0
+        let mut br: BinaryReader = BinaryReader::new(&[0x00]);
+        assert_eq!(0, br.next_leb128_number().expect("Failed to parse number"));
+
+        // Test 127
+        let mut br: BinaryReader = BinaryReader::new(&[0x7F]);
+        assert_eq!(
+            127,
+            br.next_leb128_number().expect("Failed to parse number")
+        );
+
+        // Test 128
+        let mut br: BinaryReader = BinaryReader::new(&[0x80, 0x01]);
+        assert_eq!(
+            128,
+            br.next_leb128_number().expect("Failed to parse number")
+        );
+
+        // Test 300
+        let mut br: BinaryReader = BinaryReader::new(&[0xAC, 0x02]);
+        assert_eq!(
+            300,
+            br.next_leb128_number().expect("Failed to parse number")
+        );
+
+        // Test 16384
+        let mut br: BinaryReader = BinaryReader::new(&[0x80, 0x80, 0x01, 0x00, 0x01]);
+        assert_eq!(
+            16384,
+            br.next_leb128_number().expect("Failed to parse number")
+        );
+        assert_eq!(0x00, br.next_byte().expect("Failed to read byte"));
+        assert_eq!(0x01, br.next_byte().expect("Failed to read byte"));
     }
 }
