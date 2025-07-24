@@ -1,13 +1,33 @@
-import { useAtomValue } from "jotai";
+import { invoke } from "@tauri-apps/api/core";
+import { useAtom } from "jotai";
 import React from "react";
+import { CommandResult } from "../models/commandResult";
+import { Project } from "../models/project";
 import { allProjectsAtom } from "../stores/projectStore";
 
 interface SidebarProp {
+  showBanner: (success: boolean, message: string) => void;
   onCreateClick: () => void;
 }
 
-const Sidebar = ({ onCreateClick }: SidebarProp): React.ReactNode => {
-  const projects = useAtomValue(allProjectsAtom);
+const Sidebar = ({
+  showBanner,
+  onCreateClick,
+}: SidebarProp): React.ReactNode => {
+  const [projects, setProjects] = useAtom(allProjectsAtom);
+
+  React.useEffect(() => {
+    invoke<CommandResult<Project[]>>("get_all_projects").then(
+      (res: CommandResult<Project[]>) => {
+        console.log(res);
+        if (!res.success) {
+          showBanner(false, res.message ?? "No error message");
+          return;
+        }
+        setProjects(res.data ?? []);
+      }
+    );
+  }, []);
 
   return (
     <div className="w-[234px] h-full bg-white grid grid-rows-[52px_auto_52px]">
