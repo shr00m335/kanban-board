@@ -35,11 +35,6 @@ impl BinaryReader {
         Ok(())
     }
 
-    fn peek(&self) -> Result<u8, KanbanError> {
-        self.check_bound(1)?;
-        Ok(self.bytes[self.address])
-    }
-
     pub fn next_byte(&mut self) -> Result<u8, KanbanError> {
         self.check_bound(1)?;
         let byte: u8 = self.bytes[self.address];
@@ -124,21 +119,6 @@ mod test {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(std::io::ErrorKind::NotFound, err.kind());
-    }
-
-    #[test]
-    fn test_peek() {
-        let mut test_bytes: Vec<u8> = Vec::new();
-        test_bytes.extend_from_slice(&[0x01, 0x02, 0x03]);
-        let mut br = BinaryReader {
-            bytes: test_bytes.to_vec(),
-            address: 1,
-        };
-        assert_eq!(0x02, br.peek().expect("Failed to peek"));
-        let _ = br.next_bytes(2);
-        let result = br.peek();
-        assert!(result.is_err());
-        assert_eq!(KanbanErrorKind::ProjectError, result.unwrap_err().kind);
     }
 
     #[test]
