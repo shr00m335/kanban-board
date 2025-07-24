@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use crate::errors::kanban_error::{KanbanError, KanbanErrorKind};
 use crate::file_system::binary_reader::BinaryReader;
 use crate::file_system::binary_writer::BinaryWriter;
