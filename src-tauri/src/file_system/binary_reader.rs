@@ -47,9 +47,9 @@ impl BinaryReader {
         Ok(byte)
     }
 
-    pub fn next_bytes(&mut self, length: usize) -> Result<&[u8], KanbanError> {
+    pub fn next_bytes(&mut self, length: usize) -> Result<Vec<u8>, KanbanError> {
         self.check_bound(length)?;
-        let bytes: &[u8] = &self.bytes[self.address..self.address + length];
+        let bytes: Vec<u8> = self.bytes[self.address..self.address + length].to_vec();
         self.address += length;
         Ok(bytes)
     }
@@ -111,7 +111,7 @@ mod test {
         fs::write(&path, &test_content).expect("Failed to create test file");
         let mut br = BinaryReader::read_from_file(&path).expect("Failed to read file");
         assert_eq!(
-            &test_content,
+            test_content.to_vec(),
             br.next_bytes(3).expect("Failed to read bytes")
         );
     }
@@ -161,7 +161,7 @@ mod test {
     fn test_next_bytes() {
         let mut br = BinaryReader::new(&[0x01, 0x02, 0x03]);
         assert_eq!(
-            &[0x01, 0x02],
+            [0x01, 0x02].to_vec(),
             br.next_bytes(2).expect("Failed to read byte")
         );
         let result = br.next_bytes(2);
