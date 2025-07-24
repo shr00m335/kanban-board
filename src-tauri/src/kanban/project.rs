@@ -1,4 +1,7 @@
+use std::path::Path;
+
 use crate::errors::kanban_error::{KanbanError, KanbanErrorKind};
+use crate::file_system::binary_reader::BinaryReader;
 use crate::file_system::binary_writer::BinaryWriter;
 use crate::kanban::board::Board;
 use serde;
@@ -108,6 +111,52 @@ pub fn create_project<P: AppPathProvider>(
         boards: Vec::new(),
     };
     Ok(project)
+}
+
+fn read_project_info<P: AppPathProvider>(
+    app: &P,
+    project_id: &str,
+) -> Result<Project, KanbanError> {
+    if project_id.len() != 32 {
+        return Err(KanbanError::new(
+            KanbanErrorKind::ProjectError,
+            "Invalid project ID",
+        ));
+    }
+    // Project path
+    let project_path = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| KanbanError::from_box_source(KanbanErrorKind::TauriError, e))?
+        .join(PROJECT_PATH)
+        .join(project_id);
+    let mut br = BinaryReader::read_from_file(&project_path)
+        .map_err(|e| KanbanError::from_source(KanbanErrorKind::IoError, e))?;
+    // Version
+    let version: u8 = br.next_byte()?;
+    if version != 0x00 {
+        return Err(KanbanError::new(
+            KanbanErrorKind::ProjectError,
+            "Project version not supported",
+        ));
+    }
+    // Project ID
+    let project_id: Vec<u8> = br.next_bytes(16)?;
+    // Project Name
+    let project_name: String = br.next_string()?;
+    // Project Description
+    let project_description: String = br.next_string()?;
+    Ok(Project {
+        id: <[u8; 16]>::try_from(project_id).map_err(|_| {
+            KanbanError::new(
+                KanbanErrorKind::ProjectError,
+                "Invalid project ID length".to_string(),
+            )
+        })?,
+        name: project_name,
+        description: project_description,
+        boards: Vec::new(),
+    })
 }
 
 #[cfg(test)]
@@ -338,5 +387,74 @@ mod test {
         let err = result.unwrap_err();
         assert_eq!(KanbanErrorKind::TauriError, err.kind);
         assert_eq!("tauri path error", err.message);
+    }
+
+    #[test]
+    fn test_read_project_info() {
+        // tauri env
+        let mock = tauri::test::mock_app();
+        let app = mock.app_handle();
+        // Test data
+        let test_project = create_project(app, "Test Project", "Test Description")
+            .expect("Failed to create test project");
+        let file_name: String = (&test_project.id)
+            .iter()
+            .map(|b| format!("{:02X}", b))
+            .collect();
+        let result = read_project_info(app, &file_name);
+        assert!(result.is_ok());
+        let project = result.unwrap();
+        assert_eq!(test_project.name, project.name);
+        assert_eq!(test_project.description, project.description);
+        assert_eq!(test_project.id, project.id);
+        assert_eq!(0, project.boards.len());
+        let project_path = Manager::path(app)
+            .app_data_dir()
+            .expect("Failed to get data path")
+            .join(PROJECT_PATH)
+            .join(file_name);
+        assert!(fs::exists(&project_path).expect("Failed to check exists"));
+        fs::remove_file(project_path).expect("Failed to remove file");
+    }
+
+    #[test]
+    fn test_read_project_info_invalid_project_id() {
+        // tauri env
+        let mock = tauri::test::mock_app();
+        let app = mock.app_handle();
+        let project_id = "36c2747ba8e5431aa1f247f7b711d8101a";
+        let result = read_project_info(app, project_id);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(KanbanErrorKind::ProjectError, err.kind);
+        assert_eq!("Invalid project ID", err.message);
+    }
+
+    #[test]
+    fn test_read_project_info_invalid_version() {
+        // tauri env
+        let mock = tauri::test::mock_app();
+        let app = mock.app_handle();
+        let mut bw = BinaryWriter::new();
+        let id = Uuid::new_v4();
+        write_project_header(&mut bw, &id, "Test Name", "Test Description");
+        let bytes = bw.as_bytes();
+        let mut bw = BinaryWriter::new();
+        bw.write_byte(0x01);
+        bw.write_bytes(&bytes[1..]);
+        write_project_to_file(app, &bw).expect("Failed to create project");
+        let file_name: String = id.as_bytes().iter().map(|b| format!("{:02X}", b)).collect();
+        let result = read_project_info(app, &file_name);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(KanbanErrorKind::ProjectError, err.kind);
+        assert_eq!("Project version not supported", err.message);
+        let project_path = Manager::path(app)
+            .app_data_dir()
+            .expect("Failed to get data path")
+            .join(PROJECT_PATH)
+            .join(file_name);
+        assert!(fs::exists(&project_path).expect("Failed to check exists"));
+        fs::remove_file(project_path).expect("Failed to remove file");
     }
 }
