@@ -1,6 +1,7 @@
 use std::cmp;
 use std::fs;
 use std::io::Seek;
+use std::io::Write;
 use std::path::Path;
 
 pub struct BinaryWriter {
@@ -56,7 +57,13 @@ impl BinaryWriter {
     }
 
     pub fn write_to_file(&self, path: &Path) -> std::io::Result<()> {
-        use std::io::Write;
+        let parent_path_result = path.parent();
+        if parent_path_result.is_some() {
+            let parent_path = parent_path_result.unwrap();
+            if !fs::exists(path)? {
+                fs::create_dir_all(parent_path)?;
+            }
+        }
         let mut file = fs::OpenOptions::new().write(true).create(true).open(path)?;
         file.seek(std::io::SeekFrom::Start(0)).unwrap();
         file.write_all(&self.bytes)

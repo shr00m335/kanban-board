@@ -5,6 +5,7 @@ use crate::file_system::binary_reader::BinaryReader;
 use crate::file_system::binary_writer::BinaryWriter;
 use crate::kanban::board::Board;
 use serde;
+use std::fs;
 use uuid::Uuid;
 
 #[derive(Debug, serde::Serialize)]
@@ -159,9 +160,29 @@ fn read_project_info<P: AppPathProvider>(
     })
 }
 
+pub fn get_all_projects_info<P: AppPathProvider>(app: &P) -> Result<Vec<Project>, KanbanError> {
+    let project_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| KanbanError::from_box_source(KanbanErrorKind::TauriError, e))?
+        .join(PROJECT_PATH);
+    let project_ids = fs::read_dir(project_dir)
+        .map_err(|e| KanbanError::from_source(KanbanErrorKind::IoError, e))?
+        .filter_map(|entry| entry.ok())
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .collect::<Vec<String>>();
+    let projects = project_ids
+        .iter()
+        .map(|id| read_project_info(app, id))
+        .filter_map(|p| p.ok())
+        .collect::<Vec<Project>>();
+    Ok(projects)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
+    use serial_test::serial;
     use std::{fs, os::unix::fs::PermissionsExt};
     use tauri::Manager;
     use tempdir::TempDir;
@@ -182,6 +203,7 @@ mod test {
     }
 
     #[test]
+    #[serial]
     fn test_write_project_to_file() {
         // tauri env
         let mock = tauri::test::mock_app();
@@ -292,6 +314,7 @@ mod test {
     }
 
     #[test]
+    #[serial]
     fn test_create_project() {
         // tauri env
         let mock = tauri::test::mock_app();
@@ -390,6 +413,7 @@ mod test {
     }
 
     #[test]
+    #[serial]
     fn test_read_project_info() {
         // tauri env
         let mock = tauri::test::mock_app();
@@ -456,5 +480,104 @@ mod test {
             .join(file_name);
         assert!(fs::exists(&project_path).expect("Failed to check exists"));
         fs::remove_file(project_path).expect("Failed to remove file");
+    }
+
+    #[test]
+    #[serial]
+    fn test_get_all_projects_info() {
+        let mock = tauri::test::mock_app();
+        let app = mock.app_handle();
+        let project_1 = create_project(app, "Test Project 1", "Test Description 1")
+            .expect("Failed to create test project");
+        let project_2 = create_project(app, "Test Project 2", "Test Description 2")
+            .expect("Failed to create test project");
+        let project_3 = create_project(app, "Test Project 3", "Test Description 3")
+            .expect("Failed to create test project");
+        let project_path = Manager::path(app)
+            .app_data_dir()
+            .expect("Failed to get data path")
+            .join(PROJECT_PATH);
+        let file_path = project_path.join("invalid_id");
+        fs::write(file_path, Vec::<u8>::new()).expect("Failed failed to create test project");
+        let result = get_all_projects_info(app);
+        assert!(result.is_ok());
+        let projects = result.unwrap();
+        assert_eq!(3, projects.len());
+        fs::remove_file(
+            project_path.join(
+                project_1
+                    .id
+                    .iter()
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<String>(),
+            ),
+        )
+        .expect("Failed to remove file");
+        fs::remove_file(
+            project_path.join(
+                project_2
+                    .id
+                    .iter()
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<String>(),
+            ),
+        )
+        .expect("Failed to remove file");
+        fs::remove_file(
+            project_path.join(
+                project_3
+                    .id
+                    .iter()
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<String>(),
+            ),
+        )
+        .expect("Failed to remove file");
+        fs::remove_file(project_path.join("invalid_id")).expect("Failed to remove file");
+    }
+
+    #[test]
+    fn test_get_all_projects_info_app_data_dir_error() {
+        // Mock app handle
+        struct MockAppPathProvider {
+            path: MockPath,
+        }
+
+        impl AppPathProvider for MockAppPathProvider {
+            type Path = MockPath;
+            fn path(&self) -> &Self::Path {
+                &self.path
+            }
+        }
+        struct MockPath;
+        impl PathProvider for MockPath {
+            fn app_data_dir(
+                &self,
+            ) -> Result<std::path::PathBuf, Box<dyn std::error::Error + Send + Sync>> {
+                Err("tauri path error".into())
+            }
+        }
+        // Test
+        let mock_app = MockAppPathProvider { path: MockPath };
+        let result = get_all_projects_info(&mock_app);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(KanbanErrorKind::TauriError, err.kind);
+    }
+
+    #[test]
+    #[serial]
+    fn test_get_all_projects_info_dir_not_found() {
+        let mock = tauri::test::mock_app();
+        let app = mock.app_handle();
+        let project_path = Manager::path(app)
+            .app_data_dir()
+            .expect("Failed to get data path")
+            .join(PROJECT_PATH);
+        fs::remove_dir(project_path).expect("Failed to remove dir");
+        let result = get_all_projects_info(app);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(KanbanErrorKind::IoError, err.kind);
     }
 }

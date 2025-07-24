@@ -29,3 +29,4 @@ features = ["v4"]
 
 [dev-dependencies]
 tempdir = "0.3"
+serial_test = "3.2.0"
