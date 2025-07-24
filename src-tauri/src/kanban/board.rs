@@ -26,6 +26,21 @@ fn write_board(bw: &mut BinaryWriter, board: &Board) -> Result<(), KanbanError> 
     Ok(())
 }
 
+pub(crate) fn write_all_boards(bw: &mut BinaryWriter, boards: &[Board]) -> Result<(), KanbanError> {
+    // Write number of boards
+    bw.write_leb128(boards.len().try_into().map_err(|_| {
+        KanbanError::new(
+            KanbanErrorKind::NumberError,
+            "Failed to convert u32 to usize",
+        )
+    })?);
+    // Write boards
+    for board in boards.iter() {
+        write_board(bw, board)?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -45,6 +60,37 @@ mod test {
             0x0A, 0x54, 0x65, 0x73, 0x74, 0x20, 0x42, 0x6F, 0x61, 0x72, 0x64, 0x03, 0x06, 0x49,
             0x74, 0x65, 0x6D, 0x20, 0x31, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x32, 0x06, 0x49,
             0x74, 0x65, 0x6D, 0x20, 0x33,
+        ];
+        assert_eq!(expected_bytes, bw.as_bytes());
+    }
+
+    #[test]
+    fn test_write_all_boards() {
+        let mut bw = BinaryWriter::new();
+        let test_board_1 = Board {
+            name: "Test Board 1".to_string(),
+            items: ["Item 1", "Item 2", "Item 3"]
+                .map(|s| s.to_string())
+                .to_vec(),
+        };
+        let test_board_2 = Board {
+            name: "Test Board 2".to_string(),
+            items: ["Item 1", "Item 2"].map(|s| s.to_string()).to_vec(),
+        };
+        let test_board_3 = Board {
+            name: "Test Board 3".to_string(),
+            items: ["Item 1"].map(|s| s.to_string()).to_vec(),
+        };
+        let result = write_all_boards(&mut bw, &[test_board_1, test_board_2, test_board_3]);
+        assert!(result.is_ok());
+        let expected_bytes = &[
+            0x03, 0x0C, 0x54, 0x65, 0x73, 0x74, 0x20, 0x42, 0x6F, 0x61, 0x72, 0x64, 0x20, 0x31,
+            0x03, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x31, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20,
+            0x32, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x33, 0x0C, 0x54, 0x65, 0x73, 0x74, 0x20,
+            0x42, 0x6F, 0x61, 0x72, 0x64, 0x20, 0x32, 0x02, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20,
+            0x31, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x32, 0x0C, 0x54, 0x65, 0x73, 0x74, 0x20,
+            0x42, 0x6F, 0x61, 0x72, 0x64, 0x20, 0x33, 0x01, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20,
+            0x31,
         ];
         assert_eq!(expected_bytes, bw.as_bytes());
     }
