@@ -22,7 +22,10 @@ function App() {
 
   return (
     <main className="w-screen h-screen grid grid-cols-[234px_auto] overflow-y-hidden">
-      <Sidebar onCreateClick={() => setShowPopup(true)} />
+      <Sidebar
+        showBanner={showMessage}
+        onCreateClick={() => setShowPopup(true)}
+      />
       {showPopup && (
         <CreateProjectPopup
           showBanner={showMessage}

@@ -3,7 +3,7 @@ import { useAtom } from "jotai";
 import React from "react";
 import { IoClose } from "react-icons/io5";
 import { CommandResult } from "../models/commandResult";
-import { BasicProjectInfo, Project } from "../models/project";
+import { Project } from "../models/project";
 import { allProjectsAtom } from "../stores/projectStore";
 
 interface CreateProjectPopupProp {
@@ -30,10 +30,11 @@ const CreateProjectPopup = ({
       showBanner(false, result.message ?? "No error message");
       return;
     }
-    const projectInfo: BasicProjectInfo = {
+    const projectInfo: Project = {
       id: result.data?.id ?? [],
       name: result.data?.name ?? "",
       description: result.data?.description ?? "",
+      boards: [],
     };
     setProjects([...projects, projectInfo]);
     showBanner(true, `Successfully created project: ${projectInfo.name}`);

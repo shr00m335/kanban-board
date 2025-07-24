@@ -1,4 +1,4 @@
 import { atom } from "jotai";
-import { BasicProjectInfo } from "../models/project";
+import { Project } from "../models/project";
 
-export const allProjectsAtom = atom<BasicProjectInfo[]>([]);
+export const allProjectsAtom = atom<Project[]>([]);
