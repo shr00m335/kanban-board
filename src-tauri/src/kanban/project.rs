@@ -572,7 +572,9 @@ mod test {
             .app_data_dir()
             .expect("Failed to get data path")
             .join(PROJECT_PATH);
-        fs::remove_dir(project_path).expect("Failed to remove dir");
+        if fs::exists(&project_path).expect("Unable to check whether path exists") {
+            fs::remove_dir(&project_path).expect("Failed to remove dir");
+        }
         let result = get_all_projects_info(app);
         assert!(result.is_err());
         let err = result.unwrap_err();
