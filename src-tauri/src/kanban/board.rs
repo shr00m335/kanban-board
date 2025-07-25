@@ -3,10 +3,10 @@ use crate::{
     file_system::binary_writer::BinaryWriter,
 };
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, Clone)]
 pub struct Board {
-    name: String,
-    items: Vec<String>,
+    pub name: String,
+    pub items: Vec<String>,
 }
 
 fn write_board(bw: &mut BinaryWriter, board: &Board) -> Result<(), KanbanError> {
