@@ -1,17 +1,17 @@
 use crate::errors::kanban_error::{KanbanError, KanbanErrorKind};
 use crate::file_system::binary_reader::BinaryReader;
 use crate::file_system::binary_writer::BinaryWriter;
-use crate::kanban::board::Board;
+use crate::kanban::board;
 use serde;
 use std::fs;
 use uuid::Uuid;
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, Clone)]
 pub struct Project {
     pub id: [u8; 16],
     pub name: String,
     pub description: String,
-    pub boards: Vec<Board>,
+    pub boards: Vec<board::Board>,
 }
 
 pub trait AppPathProvider {
@@ -175,6 +175,22 @@ pub fn get_all_projects_info<P: AppPathProvider>(app: &P) -> Result<Vec<Project>
         .filter_map(|p| p.ok())
         .collect::<Vec<Project>>();
     Ok(projects)
+}
+
+pub fn save_project<P: AppPathProvider>(
+    app: &P,
+    project: &Project,
+) -> Result<Project, KanbanError> {
+    let mut bw: BinaryWriter = BinaryWriter::new();
+    write_project_header(
+        &mut bw,
+        &Uuid::from_bytes(project.id),
+        &project.name,
+        &project.description,
+    );
+    board::write_all_boards(&mut bw, &project.boards)?;
+    write_project_to_file(app, &bw)?;
+    Ok(project.clone())
 }
 
 #[cfg(test)]
@@ -579,5 +595,68 @@ mod test {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(KanbanErrorKind::IoError, err.kind);
+    }
+
+    #[test]
+    #[serial]
+    fn test_save_project() {
+        let mock = tauri::test::mock_app();
+        let app = mock.app_handle();
+        let test_project = Project {
+            name: "Test Project 1".to_string(),
+            description: "Description for Test Project 1".to_string(),
+            boards: [
+                board::Board {
+                    name: "Test Board 1".to_string(),
+                    items: ["Item 1", "Item 2", "Item 3"]
+                        .map(|s| s.to_string())
+                        .to_vec(),
+                },
+                board::Board {
+                    name: "Test Board 2".to_string(),
+                    items: ["Item 1", "Item 2"].map(|s| s.to_string()).to_vec(),
+                },
+                board::Board {
+                    name: "Test Board 3".to_string(),
+                    items: ["Item 1"].map(|s| s.to_string()).to_vec(),
+                },
+            ]
+            .to_vec(),
+            id: Uuid::new_v4().into_bytes(),
+        };
+        let result = save_project(app, &test_project);
+        assert!(result.is_ok());
+        let file_name: String = (&test_project.id)
+            .iter()
+            .map(|b| format!("{:02X}", b))
+            .collect();
+        let project_path = Manager::path(app)
+            .app_data_dir()
+            .expect("Failed to get data path")
+            .join(PROJECT_PATH)
+            .join(file_name);
+        let bytes = fs::read(&project_path).expect("Failed to read file");
+        let mut expected_bytes: Vec<u8> = Vec::new();
+        expected_bytes.push(0x00);
+        expected_bytes.extend_from_slice(&test_project.id);
+        expected_bytes.extend_from_slice(&[
+            0x0E, 0x54, 0x65, 0x73, 0x74, 0x20, 0x50, 0x72, 0x6F, 0x6A, 0x65, 0x63, 0x74, 0x20,
+            0x31, 0x1E, 0x44, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x69, 0x6F, 0x6E, 0x20,
+            0x66, 0x6F, 0x72, 0x20, 0x54, 0x65, 0x73, 0x74, 0x20, 0x50, 0x72, 0x6F, 0x6A, 0x65,
+            0x63, 0x74, 0x20, 0x31,
+        ]);
+        expected_bytes.extend_from_slice(&[
+            0x03, 0x0C, 0x54, 0x65, 0x73, 0x74, 0x20, 0x42, 0x6F, 0x61, 0x72, 0x64, 0x20, 0x31,
+            0x03, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x31, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20,
+            0x32, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x33, 0x0C, 0x54, 0x65, 0x73, 0x74, 0x20,
+            0x42, 0x6F, 0x61, 0x72, 0x64, 0x20, 0x32, 0x02, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20,
+            0x31, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x32, 0x0C, 0x54, 0x65, 0x73, 0x74, 0x20,
+            0x42, 0x6F, 0x61, 0x72, 0x64, 0x20, 0x33, 0x01, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20,
+            0x31,
+        ]);
+        assert_eq!(expected_bytes, bytes);
+        if fs::exists(&project_path).expect("Failed to check whether file exists") {
+            fs::remove_file(&project_path).expect("Failed to remove file");
+        }
     }
 }
