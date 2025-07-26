@@ -6,7 +6,7 @@ use serde;
 use std::fs;
 use uuid::Uuid;
 
-#[derive(Debug, serde::Serialize, Clone)]
+#[derive(Debug, serde::Serialize, Clone, PartialEq)]
 pub struct Project {
     pub id: [u8; 16],
     pub name: String,
@@ -142,9 +142,9 @@ fn read_project_info<P: AppPathProvider>(
     // Project ID
     let project_id: Vec<u8> = br.next_bytes(16)?;
     // Project Name
-    let project_name: String = br.next_string()?;
+    let project_name: String = br.next_string(true)?;
     // Project Description
-    let project_description: String = br.next_string()?;
+    let project_description: String = br.next_string(false)?;
     Ok(Project {
         id: <[u8; 16]>::try_from(project_id).map_err(|_| {
             KanbanError::new(
@@ -191,6 +191,57 @@ pub fn save_project<P: AppPathProvider>(
     board::write_all_boards(&mut bw, &project.boards)?;
     write_project_to_file(app, &bw)?;
     Ok(project.clone())
+}
+
+pub fn read_project<P: AppPathProvider>(
+    app: &P,
+    project_id: &[u8],
+) -> Result<Project, KanbanError> {
+    // Check project id
+    if project_id.len() != 16 {
+        return Err(KanbanError::new(
+            KanbanErrorKind::ProjectError,
+            "Invalid project ID",
+        ));
+    }
+    // Get project path
+    let file_name: String = project_id.iter().map(|b| format!("{:02X}", b)).collect();
+    let project_path = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| KanbanError::from_box_source(KanbanErrorKind::TauriError, e))?
+        .join(PROJECT_PATH)
+        .join(file_name);
+    // Read project file
+    let mut br = BinaryReader::read_from_file(&project_path)
+        .map_err(|e| KanbanError::from_source(KanbanErrorKind::IoError, e))?;
+    // Version
+    let version: u8 = br.next_byte()?;
+    if version != 0x00 {
+        return Err(KanbanError::new(
+            KanbanErrorKind::ProjectError,
+            "Project version not supported",
+        ));
+    }
+    // Project ID
+    let project_id: Vec<u8> = br.next_bytes(16)?;
+    // Project Name
+    let name: String = br.next_string(true)?;
+    // Project Description
+    let description: String = br.next_string(false)?;
+    // Boards
+    let boards = board::read_all_boards(&mut br)?;
+    Ok(Project {
+        id: <[u8; 16]>::try_from(project_id).map_err(|_| {
+            KanbanError::new(
+                KanbanErrorKind::ProjectError,
+                "Invalid project ID length".to_string(),
+            )
+        })?,
+        name,
+        description,
+        boards,
+    })
 }
 
 #[cfg(test)]
@@ -655,6 +706,51 @@ mod test {
             0x31,
         ]);
         assert_eq!(expected_bytes, bytes);
+        if fs::exists(&project_path).expect("Failed to check whether file exists") {
+            fs::remove_file(&project_path).expect("Failed to remove file");
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_read_project() {
+        let mock = tauri::test::mock_app();
+        let app = mock.app_handle();
+        let test_project = Project {
+            name: "Test Project 1".to_string(),
+            description: "Description for Test Project 1".to_string(),
+            boards: [
+                board::Board {
+                    name: "Test Board 1".to_string(),
+                    items: ["Item 1", "Item 2", "Item 3"]
+                        .map(|s| s.to_string())
+                        .to_vec(),
+                },
+                board::Board {
+                    name: "Test Board 2".to_string(),
+                    items: ["Item 1", "Item 2"].map(|s| s.to_string()).to_vec(),
+                },
+                board::Board {
+                    name: "Test Board 3".to_string(),
+                    items: ["Item 1"].map(|s| s.to_string()).to_vec(),
+                },
+            ]
+            .to_vec(),
+            id: Uuid::new_v4().into_bytes(),
+        };
+        let expected_project = save_project(app, &test_project).expect("Failed to save project");
+        let project = read_project(app, &expected_project.id);
+        assert!(project.is_ok());
+        assert_eq!(expected_project, project.unwrap());
+        let file_name: String = (&expected_project.id)
+            .iter()
+            .map(|b| format!("{:02X}", b))
+            .collect();
+        let project_path = Manager::path(app)
+            .app_data_dir()
+            .expect("Failed to get data path")
+            .join(PROJECT_PATH)
+            .join(file_name);
         if fs::exists(&project_path).expect("Failed to check whether file exists") {
             fs::remove_file(&project_path).expect("Failed to remove file");
         }
