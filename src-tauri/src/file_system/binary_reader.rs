@@ -81,9 +81,14 @@ impl BinaryReader {
         }
         Ok(result)
     }
-    pub fn next_string(&mut self) -> Result<String, KanbanError> {
+    pub fn next_string(&mut self, is_256_max: bool) -> Result<String, KanbanError> {
         let previous_address: usize = self.address;
-        let len = self.next_leb128_number()?;
+        let len: usize;
+        if is_256_max {
+            len = self.next_byte()? as usize;
+        } else {
+            len = self.next_leb128_number()?;
+        }
         let result = self.next_string_by_length(len);
         if result.is_err() {
             self.address = previous_address;
@@ -233,9 +238,9 @@ mod test {
         ]);
         assert_eq!(
             "Hello World!",
-            br.next_string().expect("Failed to read string")
+            br.next_string(false).expect("Failed to read string")
         );
-        let result = br.next_string();
+        let result = br.next_string(false);
         assert!(result.is_err());
         assert_eq!(KanbanErrorKind::TextError, result.unwrap_err().kind);
         assert_eq!(0x03, br.next_byte().expect("Failed to read byte"))
