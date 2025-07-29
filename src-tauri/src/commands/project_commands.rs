@@ -45,6 +45,26 @@ pub fn get_all_projects<R: tauri::Runtime>(
     }
 }
 
+#[tauri::command]
+pub fn read_project<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    project_id: &[u8],
+) -> CommandResult<project::Project> {
+    let result = project::read_project(&app, project_id);
+    if result.is_err() {
+        return CommandResult {
+            success: false,
+            data: None,
+            message: Some(result.unwrap_err().message),
+        };
+    }
+    CommandResult {
+        success: true,
+        data: Some(result.unwrap()),
+        message: None,
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
