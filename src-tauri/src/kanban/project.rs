@@ -6,7 +6,7 @@ use serde;
 use std::fs;
 use uuid::Uuid;
 
-#[derive(Debug, serde::Serialize, Clone, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq)]
 pub struct Project {
     pub id: [u8; 16],
     pub name: String,

@@ -65,6 +65,26 @@ pub fn read_project<R: tauri::Runtime>(
     }
 }
 
+#[tauri::command]
+pub fn save_project<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    project: project::Project,
+) -> CommandResult<project::Project> {
+    let result = project::save_project(&app, &project);
+    if result.is_err() {
+        return CommandResult {
+            success: false,
+            data: None,
+            message: Some(result.unwrap_err().message),
+        };
+    }
+    CommandResult {
+        success: true,
+        data: Some(result.unwrap()),
+        message: None,
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

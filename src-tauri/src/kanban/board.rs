@@ -3,7 +3,7 @@ use crate::{
     file_system::{binary_reader::BinaryReader, binary_writer::BinaryWriter},
 };
 
-#[derive(Debug, serde::Serialize, Clone, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq)]
 pub struct Board {
     pub name: String,
     pub items: Vec<String>,
