@@ -48,9 +48,9 @@ pub fn get_all_projects<R: tauri::Runtime>(
 #[tauri::command]
 pub fn read_project<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
-    project_id: &[u8],
+    project_id: Vec<u8>,
 ) -> CommandResult<project::Project> {
-    let result = project::read_project(&app, project_id);
+    let result = project::read_project(&app, &project_id);
     if result.is_err() {
         return CommandResult {
             success: false,
