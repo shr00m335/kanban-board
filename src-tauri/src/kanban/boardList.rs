@@ -5,8 +5,8 @@ use crate::{
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq)]
 pub struct BoardList {
-    title: String,
-    items: Vec<String>,
+    pub title: String,
+    pub items: Vec<String>,
 }
 
 fn write_board_list(bw: &mut BinaryWriter, board_list: &BoardList) -> Result<(), KanbanError> {
