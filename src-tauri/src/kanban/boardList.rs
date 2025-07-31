@@ -1,6 +1,6 @@
 use crate::{
     errors::kanban_error::{KanbanError, KanbanErrorKind},
-    file_system::binary_writer::BinaryWriter,
+    file_system::{binary_reader::BinaryReader, binary_writer::BinaryWriter},
 };
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq)]
@@ -38,6 +38,18 @@ pub(crate) fn write_all_board_lists(
         write_board_list(bw, &board_list)?;
     }
     Ok(())
+}
+
+pub(crate) fn read_board_list(br: &mut BinaryReader) -> Result<BoardList, KanbanError> {
+    // Board list title
+    let title: String = br.next_string(true)?;
+    // Board items
+    let items_count: usize = br.next_leb128_number()?;
+    let mut items: Vec<String> = Vec::new();
+    for _ in 0..items_count {
+        items.push(br.next_string(false)?);
+    }
+    Ok(BoardList { title, items })
 }
 
 #[cfg(test)]
@@ -94,5 +106,26 @@ mod test {
             0x31,
         ];
         assert_eq!(expected_bytes, bw.as_bytes());
+    }
+
+    #[test]
+    fn test_read_board_list() {
+        let test_data = [
+            11, 0x54, 0x65, 0x73, 0x74, 0x20, 0x4C, 0x69, 0x73, 0x74, 0x20, 0x31, 3, 11, 0x54,
+            0x65, 0x73, 0x74, 0x20, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x31, 11, 0x54, 0x65, 0x73, 0x74,
+            0x20, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x32, 11, 0x54, 0x65, 0x73, 0x74, 0x20, 0x49, 0x74,
+            0x65, 0x6D, 0x20, 0x33,
+        ];
+        let expected_list = BoardList {
+            title: "Test List 1".to_string(),
+            items: ["Test Item 1", "Test Item 2", "Test Item 3"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>(),
+        };
+        let mut br = BinaryReader::new(&test_data);
+        let result = read_board_list(&mut br);
+        assert!(result.is_ok());
+        assert_eq!(expected_list, result.unwrap());
     }
 }
