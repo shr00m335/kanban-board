@@ -1,5 +1,6 @@
 import { atom } from "jotai";
-import { Project } from "../models/project";
+import { BoardModel, ProjectModel } from "../models/project";
 
-export const allProjectsAtom = atom<Project[]>([]);
-export const openedProjectAtom = atom<Project | null>(null);
+export const allProjectsAtom = atom<ProjectModel[]>([]);
+export const openedProjectAtom = atom<ProjectModel | null>(null);
+export const openedBoardAtom = atom<BoardModel | null>(null);

@@ -1,9 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import React from "react";
 import { CommandResult } from "../models/commandResult";
-import { ProjectModel } from "../models/project";
-import { allProjectsAtom, openedProjectAtom } from "../stores/projectStore";
+import { BoardModel, ProjectModel } from "../models/project";
+import {
+  allProjectsAtom,
+  openedBoardAtom,
+  openedProjectAtom,
+} from "../stores/projectStore";
 
 interface SidebarProp {
   showBanner: (success: boolean, message: string) => void;
@@ -16,6 +20,7 @@ const Sidebar = ({
 }: SidebarProp): React.ReactNode => {
   const [projects, setProjects] = useAtom(allProjectsAtom);
   const [openedProject, setOpenedProject] = useAtom(openedProjectAtom);
+  const setOpenedBoard = useSetAtom(openedBoardAtom);
 
   React.useEffect(() => {
     invoke<CommandResult<ProjectModel[]>>("get_all_projects").then(
@@ -39,6 +44,21 @@ const Sidebar = ({
       return;
     }
     setOpenedProject(result.data!);
+  };
+
+  const openBoard = (boardName: string): void => {
+    if (openedProject === null) {
+      showBanner(false, "No opened project.");
+      return;
+    }
+    let board: BoardModel | undefined = openedProject.boards.find(
+      (x) => x.name === boardName
+    );
+    if (board === undefined) {
+      showBanner(false, "Board not found.");
+      return;
+    }
+    setOpenedBoard(board);
   };
 
   return (
@@ -69,6 +89,7 @@ const Sidebar = ({
               <button
                 key={board.name}
                 className=" w-full text-left px-3 py-1 text-lg hover:bg-black/10"
+                onClick={() => openBoard(board.name)}
               >
                 {board.name}
               </button>
