@@ -246,6 +246,8 @@ pub fn read_project<P: AppPathProvider>(
 
 #[cfg(test)]
 mod test {
+    use crate::kanban::boardList::BoardList;
+
     use super::*;
     use serial_test::serial;
     use std::{fs, os::unix::fs::PermissionsExt};
@@ -653,26 +655,28 @@ mod test {
     fn test_save_project() {
         let mock = tauri::test::mock_app();
         let app = mock.app_handle();
+        let test_list_1 = BoardList {
+            title: "Test Board 1".to_string(),
+            items: ["Item 1", "Item 2", "Item 3"]
+                .map(|s| s.to_string())
+                .to_vec(),
+        };
+        let test_list_2 = BoardList {
+            title: "Test Board 2".to_string(),
+            items: ["Item 1", "Item 2"].map(|s| s.to_string()).to_vec(),
+        };
+        let test_list_3 = BoardList {
+            title: "Test Board 3".to_string(),
+            items: ["Item 1"].map(|s| s.to_string()).to_vec(),
+        };
+        let test_board = board::Board {
+            name: "Test Board".to_string(),
+            lists: [test_list_1, test_list_2, test_list_3].to_vec(),
+        };
         let test_project = Project {
             name: "Test Project 1".to_string(),
             description: "Description for Test Project 1".to_string(),
-            boards: [
-                board::Board {
-                    name: "Test Board 1".to_string(),
-                    items: ["Item 1", "Item 2", "Item 3"]
-                        .map(|s| s.to_string())
-                        .to_vec(),
-                },
-                board::Board {
-                    name: "Test Board 2".to_string(),
-                    items: ["Item 1", "Item 2"].map(|s| s.to_string()).to_vec(),
-                },
-                board::Board {
-                    name: "Test Board 3".to_string(),
-                    items: ["Item 1"].map(|s| s.to_string()).to_vec(),
-                },
-            ]
-            .to_vec(),
+            boards: [test_board.clone(), test_board.clone()].to_vec(),
             id: Uuid::new_v4().into_bytes(),
         };
         let result = save_project(app, &test_project);
@@ -697,13 +701,20 @@ mod test {
             0x63, 0x74, 0x20, 0x31,
         ]);
         expected_bytes.extend_from_slice(&[
-            0x03, 0x0C, 0x54, 0x65, 0x73, 0x74, 0x20, 0x42, 0x6F, 0x61, 0x72, 0x64, 0x20, 0x31,
-            0x03, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x31, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20,
-            0x32, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x33, 0x0C, 0x54, 0x65, 0x73, 0x74, 0x20,
-            0x42, 0x6F, 0x61, 0x72, 0x64, 0x20, 0x32, 0x02, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20,
-            0x31, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x32, 0x0C, 0x54, 0x65, 0x73, 0x74, 0x20,
-            0x42, 0x6F, 0x61, 0x72, 0x64, 0x20, 0x33, 0x01, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20,
-            0x31,
+            2, 10, 0x54, 0x65, 0x73, 0x74, 0x20, 0x42, 0x6F, 0x61, 0x72, 0x64, 3, 0x0C, 0x54, 0x65,
+            0x73, 0x74, 0x20, 0x42, 0x6F, 0x61, 0x72, 0x64, 0x20, 0x31, 0x03, 0x06, 0x49, 0x74,
+            0x65, 0x6D, 0x20, 0x31, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x32, 0x06, 0x49, 0x74,
+            0x65, 0x6D, 0x20, 0x33, 0x0C, 0x54, 0x65, 0x73, 0x74, 0x20, 0x42, 0x6F, 0x61, 0x72,
+            0x64, 0x20, 0x32, 0x02, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x31, 0x06, 0x49, 0x74,
+            0x65, 0x6D, 0x20, 0x32, 0x0C, 0x54, 0x65, 0x73, 0x74, 0x20, 0x42, 0x6F, 0x61, 0x72,
+            0x64, 0x20, 0x33, 0x01, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x31, 10, 0x54, 0x65, 0x73,
+            0x74, 0x20, 0x42, 0x6F, 0x61, 0x72, 0x64, 3, 0x0C, 0x54, 0x65, 0x73, 0x74, 0x20, 0x42,
+            0x6F, 0x61, 0x72, 0x64, 0x20, 0x31, 0x03, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x31,
+            0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x32, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x33,
+            0x0C, 0x54, 0x65, 0x73, 0x74, 0x20, 0x42, 0x6F, 0x61, 0x72, 0x64, 0x20, 0x32, 0x02,
+            0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x31, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x32,
+            0x0C, 0x54, 0x65, 0x73, 0x74, 0x20, 0x42, 0x6F, 0x61, 0x72, 0x64, 0x20, 0x33, 0x01,
+            0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x31,
         ]);
         assert_eq!(expected_bytes, bytes);
         if fs::exists(&project_path).expect("Failed to check whether file exists") {
@@ -716,26 +727,28 @@ mod test {
     fn test_read_project() {
         let mock = tauri::test::mock_app();
         let app = mock.app_handle();
+        let test_list_1 = BoardList {
+            title: "Test Board 1".to_string(),
+            items: ["Item 1", "Item 2", "Item 3"]
+                .map(|s| s.to_string())
+                .to_vec(),
+        };
+        let test_list_2 = BoardList {
+            title: "Test Board 2".to_string(),
+            items: ["Item 1", "Item 2"].map(|s| s.to_string()).to_vec(),
+        };
+        let test_list_3 = BoardList {
+            title: "Test Board 3".to_string(),
+            items: ["Item 1"].map(|s| s.to_string()).to_vec(),
+        };
+        let test_board = board::Board {
+            name: "Test Board".to_string(),
+            lists: [test_list_1, test_list_2, test_list_3].to_vec(),
+        };
         let test_project = Project {
             name: "Test Project 1".to_string(),
             description: "Description for Test Project 1".to_string(),
-            boards: [
-                board::Board {
-                    name: "Test Board 1".to_string(),
-                    items: ["Item 1", "Item 2", "Item 3"]
-                        .map(|s| s.to_string())
-                        .to_vec(),
-                },
-                board::Board {
-                    name: "Test Board 2".to_string(),
-                    items: ["Item 1", "Item 2"].map(|s| s.to_string()).to_vec(),
-                },
-                board::Board {
-                    name: "Test Board 3".to_string(),
-                    items: ["Item 1"].map(|s| s.to_string()).to_vec(),
-                },
-            ]
-            .to_vec(),
+            boards: [test_board.clone(), test_board.clone()].to_vec(),
             id: Uuid::new_v4().into_bytes(),
         };
         let expected_project = save_project(app, &test_project).expect("Failed to save project");
