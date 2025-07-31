@@ -9,13 +9,10 @@ pub struct BoardList {
     items: Vec<String>,
 }
 
-pub(crate) fn write_board_list(
-    bw: &mut BinaryWriter,
-    board_list: &BoardList,
-) -> Result<(), KanbanError> {
+fn write_board_list(bw: &mut BinaryWriter, board_list: &BoardList) -> Result<(), KanbanError> {
     bw.write_string_with_length(&board_list.title, true);
     // Board Items
-    bw.write_leb128(board_list.items.len().try_into().map_err(|e| {
+    bw.write_leb128(board_list.items.len().try_into().map_err(|_| {
         KanbanError::new(
             KanbanErrorKind::NumberError,
             "Failed to covert u32 to usize",
@@ -23,6 +20,22 @@ pub(crate) fn write_board_list(
     })?);
     for item in board_list.items.iter() {
         bw.write_string_with_length(item, false);
+    }
+    Ok(())
+}
+
+pub(crate) fn write_all_board_lists(
+    bw: &mut BinaryWriter,
+    board_lists: &[BoardList],
+) -> Result<(), KanbanError> {
+    bw.write_leb128(board_lists.len().try_into().map_err(|_| {
+        KanbanError::new(
+            KanbanErrorKind::NumberError,
+            "Failed to covert u32 to usize",
+        )
+    })?);
+    for board_list in board_lists.iter() {
+        write_board_list(bw, &board_list)?;
     }
     Ok(())
 }
@@ -50,5 +63,36 @@ mod test {
         let result = write_board_list(&mut bw, &test_list);
         assert!(result.is_ok());
         assert_eq!(&expected_data, bw.as_bytes());
+    }
+
+    #[test]
+    fn test_write_all_board_lists() {
+        let mut bw = BinaryWriter::new();
+        let test_list_1 = BoardList {
+            title: "Test Board 1".to_string(),
+            items: ["Item 1", "Item 2", "Item 3"]
+                .map(|s| s.to_string())
+                .to_vec(),
+        };
+        let test_list_2 = BoardList {
+            title: "Test Board 2".to_string(),
+            items: ["Item 1", "Item 2"].map(|s| s.to_string()).to_vec(),
+        };
+        let test_list_3 = BoardList {
+            title: "Test Board 3".to_string(),
+            items: ["Item 1"].map(|s| s.to_string()).to_vec(),
+        };
+        let result = write_all_board_lists(&mut bw, &[test_list_1, test_list_2, test_list_3]);
+        assert!(result.is_ok());
+        let expected_bytes = &[
+            0x03, 0x0C, 0x54, 0x65, 0x73, 0x74, 0x20, 0x42, 0x6F, 0x61, 0x72, 0x64, 0x20, 0x31,
+            0x03, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x31, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20,
+            0x32, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x33, 0x0C, 0x54, 0x65, 0x73, 0x74, 0x20,
+            0x42, 0x6F, 0x61, 0x72, 0x64, 0x20, 0x32, 0x02, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20,
+            0x31, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20, 0x32, 0x0C, 0x54, 0x65, 0x73, 0x74, 0x20,
+            0x42, 0x6F, 0x61, 0x72, 0x64, 0x20, 0x33, 0x01, 0x06, 0x49, 0x74, 0x65, 0x6D, 0x20,
+            0x31,
+        ];
+        assert_eq!(expected_bytes, bw.as_bytes());
     }
 }
