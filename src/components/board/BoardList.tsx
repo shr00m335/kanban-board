@@ -7,7 +7,7 @@ interface BoardListProps {
 
 const BoardList = ({ boardList }: BoardListProps): JSX.Element => {
   return (
-    <div className="grid grid-rows-[28px_auto_40px] w-[260px] h-full bg-blue-300 rounded-2xl px-4 py-2">
+    <div className="grid grid-rows-[28px_auto_40px] w-[260px] h-full bg-blue-300 rounded-2xl px-4 py-2 ml-4 first:ml-0">
       {/* Title */}
       <h2 className="text-lg font-bold my-auto">{boardList.title}</h2>
       {/* Items */}
