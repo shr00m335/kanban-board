@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useAtom } from "jotai";
 import React from "react";
 import { CommandResult } from "../models/commandResult";
-import { Project } from "../models/project";
+import { ProjectModel } from "../models/project";
 import { allProjectsAtom, openedProjectAtom } from "../stores/projectStore";
 
 interface SidebarProp {
@@ -18,8 +18,8 @@ const Sidebar = ({
   const [openedProject, setOpenedProject] = useAtom(openedProjectAtom);
 
   React.useEffect(() => {
-    invoke<CommandResult<Project[]>>("get_all_projects").then(
-      (res: CommandResult<Project[]>) => {
+    invoke<CommandResult<ProjectModel[]>>("get_all_projects").then(
+      (res: CommandResult<ProjectModel[]>) => {
         console.log(res);
         if (!res.success) {
           showBanner(false, res.message ?? "No error message");
@@ -31,7 +31,7 @@ const Sidebar = ({
   }, []);
 
   const openProject = async (projectId: number[]): Promise<void> => {
-    const result = await invoke<CommandResult<Project>>("read_project", {
+    const result = await invoke<CommandResult<ProjectModel>>("read_project", {
       projectId,
     });
     if (!result.success) {

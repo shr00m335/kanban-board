@@ -1,16 +1,16 @@
-export interface Project {
+export interface ProjectModel {
   id: number[];
   name: string;
   description: string;
-  boards: Board[];
+  boards: BoardModel[];
 }
 
-export interface Board {
+export interface BoardModel {
   name: string;
-  lists: BoardList[];
+  lists: BoardListModel[];
 }
 
-export interface BoardList {
+export interface BoardListModel {
   title: string;
   items: string[];
 }

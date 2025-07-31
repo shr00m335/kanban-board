@@ -2,14 +2,14 @@ import { useAtomValue } from "jotai";
 import React from "react";
 import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import "./App.css";
+import { Board } from "./components/board";
 import CreateProjectPopup from "./components/CreateProjectPopup";
 import Sidebar from "./components/Sidebar";
-import { Board } from "./components/board";
-import { Project } from "./models/project";
-import { openedProjectAtom } from "./stores/projectStore";
+import { BoardModel } from "./models/project";
+import { openedBoardAtom } from "./stores/projectStore";
 
 function App() {
-  const openedProject: Project | null = useAtomValue(openedProjectAtom);
+  const openedBoard: BoardModel | null = useAtomValue(openedBoardAtom);
 
   const [showPopup, setShowPopup] = React.useState<boolean>(false);
   const [showBanner, setShowBanner] = React.useState<boolean>(false);
@@ -37,7 +37,7 @@ function App() {
           onCloseClick={() => setShowPopup(false)}
         />
       )}
-      {openedProject !== null && <Board />}
+      {openedBoard !== null && <Board />}
 
       {/* Infomation Banner */}
       <div
