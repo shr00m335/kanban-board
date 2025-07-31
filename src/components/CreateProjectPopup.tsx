@@ -3,7 +3,7 @@ import { useAtom } from "jotai";
 import React from "react";
 import { IoClose } from "react-icons/io5";
 import { CommandResult } from "../models/commandResult";
-import { Project } from "../models/project";
+import { ProjectModel } from "../models/project";
 import { allProjectsAtom } from "../stores/projectStore";
 
 interface CreateProjectPopupProp {
@@ -22,7 +22,7 @@ const CreateProjectPopup = ({
 
   const createProject = async (): Promise<void> => {
     console.log("Creating project");
-    const result = await invoke<CommandResult<Project>>(
+    const result = await invoke<CommandResult<ProjectModel>>(
       "create_project_command",
       { name, description }
     );
@@ -30,7 +30,7 @@ const CreateProjectPopup = ({
       showBanner(false, result.message ?? "No error message");
       return;
     }
-    const projectInfo: Project = {
+    const projectInfo: ProjectModel = {
       id: result.data?.id ?? [],
       name: result.data?.name ?? "",
       description: result.data?.description ?? "",
