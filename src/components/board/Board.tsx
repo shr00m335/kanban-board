@@ -60,7 +60,12 @@ const Board = ({ showBanner }: BoardProps): JSX.Element => {
       <div className="flex pb-5">
         {openedBoard !== null &&
           openedBoard.lists.map((list, idx) => (
-            <BoardList key={list.title} boardList={list} boardListIndex={idx} />
+            <BoardList
+              key={list.title}
+              boardList={list}
+              boardListIndex={idx}
+              showBanner={showBanner}
+            />
           ))}
         {
           <div
