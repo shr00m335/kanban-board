@@ -39,7 +39,7 @@ const Board = ({ showBanner }: BoardProps): JSX.Element => {
       showBanner(false, `${listName} already exists`);
     } else {
       const newList: BoardListModel = {
-        title: `List ${openedBoard.lists.length + 1}`,
+        title: listName,
         items: [],
       };
       const updatedBoard: BoardModel = {
