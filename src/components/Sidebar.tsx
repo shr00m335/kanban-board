@@ -22,6 +22,10 @@ const Sidebar = ({
   const [openedProject, setOpenedProject] = useAtom(openedProjectAtom);
   const setOpenedBoard = useSetAtom(openedBoardAtom);
 
+  const [isAddingItem, setIsAddingItem] = React.useState<boolean>(false);
+
+  const addItemRef = React.useRef<HTMLInputElement>(null);
+
   React.useEffect(() => {
     invoke<CommandResult<ProjectModel[]>>("get_all_projects").then(
       (res: CommandResult<ProjectModel[]>) => {
@@ -34,6 +38,17 @@ const Sidebar = ({
       }
     );
   }, []);
+
+  const onCreateBtnClick = () => {
+    if (openedProject === null) {
+      onCreateClick();
+    } else {
+      setIsAddingItem(true);
+      setTimeout(() => {
+        addItemRef.current?.focus();
+      }, 10);
+    }
+  };
 
   const openProject = async (projectId: number[]): Promise<void> => {
     const result = await invoke<CommandResult<ProjectModel>>("read_project", {
@@ -59,6 +74,52 @@ const Sidebar = ({
       return;
     }
     setOpenedBoard(board);
+  };
+
+  const onAddItemInputKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>
+  ): void => {
+    if (e.key === "Enter") {
+      addItemRef.current?.blur();
+    }
+  };
+
+  const onAddItemInputBlur = async (
+    e: React.FocusEvent<HTMLInputElement>
+  ): Promise<void> => {
+    if (openedProject === null) return;
+    const boardName = e.target.value.trim();
+    if (boardName.length === 0) {
+      showBanner(false, "Board name cannot be empty");
+    } else if (
+      openedProject.boards.map((board) => board.name).includes(boardName)
+    ) {
+      showBanner(false, `\"${boardName}\" already exists`);
+    } else {
+      // Create board
+      const newBoard: BoardModel = {
+        name: boardName,
+        lists: [],
+      };
+      const updatedProject: ProjectModel = {
+        ...openedProject,
+        boards: [...openedProject.boards, newBoard],
+      };
+      // Save updated project
+      const result = await invoke<CommandResult<ProjectModel>>("save_project", {
+        project: updatedProject,
+      });
+      if (!result.success || result.data === null) {
+        showBanner(false, result.message ?? "No error message");
+        return;
+      } else {
+        setOpenedProject(result.data ?? updatedProject);
+      }
+    }
+    if (addItemRef.current) {
+      addItemRef.current.value = "";
+    }
+    setIsAddingItem(false);
   };
 
   return (
@@ -94,12 +155,20 @@ const Sidebar = ({
                 {board.name}
               </button>
             ))}
+        <input
+          ref={addItemRef}
+          className={`w-full text-left px-3 py-1 text-lg ${
+            isAddingItem ? "static" : "hidden"
+          }`}
+          onKeyDown={onAddItemInputKeyDown}
+          onBlur={onAddItemInputBlur}
+        />
       </div>
       <button
         className="text-left px-3 my-auto text-gray-400 select-none hover:text-gray-600"
-        onClick={onCreateClick}
+        onClick={onCreateBtnClick}
       >
-        + Add Project
+        + Add {openedProject === null ? "Project" : "Board"}
       </button>
     </div>
   );
