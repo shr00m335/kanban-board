@@ -24,7 +24,6 @@ function App() {
       setShowBanner(false);
     }, 2500);
   };
-
   return (
     <main className="w-screen h-screen grid grid-cols-[234px_auto] overflow-y-hidden">
       <Sidebar
