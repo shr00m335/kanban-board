@@ -36,7 +36,7 @@ function App() {
           onCloseClick={() => setShowPopup(false)}
         />
       )}
-      {openedBoard !== null && <Board />}
+      {openedBoard !== null && <Board showBanner={showMessage} />}
 
       {/* Infomation Banner */}
       <div
