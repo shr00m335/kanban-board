@@ -41,6 +41,7 @@ const BoardList = ({
   const [mousePos, setMousePos] = React.useState<number[]>([-1, -1]);
   const [dragOffset, setDragOffset] = React.useState<number[]>([0, 0]);
   const [listHeight, setListHeight] = React.useState<number>(0);
+  const [isEditingTitle, setIsEditingTitle] = React.useState<boolean>(false);
 
   const listRef = React.useRef<HTMLDivElement>(null);
 
@@ -164,6 +165,54 @@ const BoardList = ({
     }
   }, [listRef]);
 
+  const titleRef = React.useRef<HTMLHeadingElement>(null);
+
+  const onTitleDbClick = (e: React.MouseEvent<HTMLHeadingElement>): void => {
+    if (e.button !== 0) return;
+    setIsEditingTitle(true);
+    setTimeout(() => {
+      if (titleRef.current !== null) {
+        titleRef.current.focus();
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(titleRef.current);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      }
+    }, 10);
+  };
+
+  const onTitleKeyDown = (e: React.KeyboardEvent<HTMLHeadingElement>): void => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      titleRef.current?.blur();
+    }
+  };
+
+  const onTitleBlur = (): void => {
+    if (titleRef.current === null || openedBoard === null) return;
+    const newTitle = titleRef.current.innerHTML.trim();
+    if (newTitle.length > 255) {
+      showBanner(false, "Title cannot exceed 255 characters");
+      titleRef.current.innerHTML = boardList.title;
+    } else {
+      const updatedList: BoardListModel = {
+        ...boardList,
+        title: newTitle,
+      };
+      const updatedBoard: BoardModel = {
+        ...openedBoard,
+        lists: [
+          ...openedBoard.lists.slice(0, boardListIndex),
+          updatedList,
+          ...openedBoard.lists.slice(boardListIndex + 1),
+        ],
+      };
+      setOpenedBoard(updatedBoard);
+    }
+    setIsEditingTitle(false);
+  };
+
   return (
     <>
       <div
@@ -179,7 +228,16 @@ const BoardList = ({
         onMouseUp={onListMouseUp}
       >
         {/* Title */}
-        <h2 className="text-lg font-bold my-auto">{boardList.title}</h2>
+        <h2
+          ref={titleRef}
+          className="text-lg font-bold my-auto max-w-[224px] line-clamp-1 truncate"
+          onDoubleClick={onTitleDbClick}
+          onKeyDown={onTitleKeyDown}
+          onBlur={onTitleBlur}
+          contentEditable={isEditingTitle}
+        >
+          {boardList.title}
+        </h2>
         {/* Items */}
         <div className="overflow-y-auto h-full">
           {boardList.items.map((item, idx) => (
