@@ -253,6 +253,7 @@ const BoardList = ({
                 key={boardList.title + item}
                 boardListIndex={boardListIndex}
                 itemIndex={idx}
+                showBanner={showBanner}
                 item={item}
               />
             </>

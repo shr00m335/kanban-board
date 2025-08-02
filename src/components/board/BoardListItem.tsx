@@ -1,5 +1,6 @@
 import { useAtom } from "jotai";
 import React from "react";
+import { BoardListModel, BoardModel } from "../../models/project";
 import {
   draggingItemAtom,
   draggingItemLocationAtom,
@@ -11,12 +12,14 @@ interface BoardListItemProps {
   boardListIndex: number;
   itemIndex: number;
   item: string;
+  showBanner: (success: boolean, message: string) => void;
 }
 
 const BoardListItem = ({
   boardListIndex,
   itemIndex,
   item,
+  showBanner,
 }: BoardListItemProps): JSX.Element => {
   const [firstItemLocation, setFirstItemLocation] = useAtom(
     firstItemLocationAtom
@@ -29,6 +32,9 @@ const BoardListItem = ({
   const [isDragging, setIsDragging] = React.useState<boolean>(false);
   const [mousePos, setMousePos] = React.useState<number[]>([0, 0]);
   const [openedBoard, setOpenedBoard] = useAtom(openedBoardAtom);
+  const [isEditingItem, setIsEditingItem] = React.useState<boolean>(false);
+
+  const itemRef = React.useRef<HTMLParagraphElement>(null);
 
   let mouseHoldTimer: number | null = null;
 
@@ -114,28 +120,82 @@ const BoardListItem = ({
     });
   };
 
-  const ref = React.useRef<HTMLParagraphElement>(null);
+  const handleItemDbClick = (
+    e: React.MouseEvent<HTMLParagraphElement>
+  ): void => {
+    if (e.button !== 0) return; // Only left click
+    setIsEditingItem(true);
+    setTimeout(() => {
+      if (itemRef.current !== null) {
+        itemRef.current.focus();
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(itemRef.current);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+        itemRef.current?.focus();
+      }
+    }, 0);
+  };
+
+  const handleItemKeyDown = (
+    e: React.KeyboardEvent<HTMLParagraphElement>
+  ): void => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      itemRef.current?.blur();
+    }
+  };
+
+  const handleItemBlur = (): void => {
+    if (itemRef.current === null || openedBoard === null) return;
+    const newItem: string = itemRef.current.innerHTML
+      .trim()
+      .replace(/<div>/g, "\n")
+      .replace(/<\/div>|<br>/g, "");
+    console.log(newItem);
+    if (newItem.length === 0) {
+      showBanner(false, "Item cannot be empty");
+      itemRef.current.innerHTML = item;
+    } else {
+      let updatedList: BoardListModel = {
+        ...openedBoard.lists[boardListIndex],
+      };
+      updatedList.items[itemIndex] = newItem;
+      let updatedBoard: BoardModel = {
+        ...openedBoard,
+      };
+      updatedBoard.lists[boardListIndex] = updatedList;
+      setOpenedBoard(updatedBoard);
+    }
+    setIsEditingItem(false);
+  };
+
   React.useEffect(() => {
-    if (!ref.current || boardListIndex !== 0 || itemIndex !== 0) return;
+    if (!itemRef.current || boardListIndex !== 0 || itemIndex !== 0) return;
     setFirstItemLocation([
-      ref.current.getBoundingClientRect().left - 130,
-      ref.current.getBoundingClientRect().top - 50,
+      itemRef.current.getBoundingClientRect().left - 130,
+      itemRef.current.getBoundingClientRect().top - 50,
     ]);
-  }, [ref]);
+  }, [itemRef]);
 
   return (
     <>
       <p
-        ref={ref}
-        className={`bg-white w-[224px] px-2 py-1.5 mt-2 rounded-xl ${
+        ref={itemRef}
+        className={`bg-white w-[224px] px-2 py-1.5 mt-2 rounded-xl whitespace-pre-line ${
           isDragging ? "absolute" : "static"
         }`}
         style={{
           left: mousePos[0],
           top: mousePos[1],
         }}
+        contentEditable={isEditingItem}
         onMouseDown={handleMouseDown}
         onMouseUp={handleItemMouseUp}
+        onDoubleClick={handleItemDbClick}
+        onKeyDown={handleItemKeyDown}
+        onBlur={handleItemBlur}
       >
         {item}
       </p>
