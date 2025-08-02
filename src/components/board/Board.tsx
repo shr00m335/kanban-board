@@ -1,7 +1,11 @@
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import React from "react";
 import { IoAddOutline } from "react-icons/io5";
 import { BoardListModel, BoardModel } from "../../models/project";
+import {
+  draggingListIndexAtom,
+  draggingListLocationAtom,
+} from "../../stores/dndStore";
 import { openedBoardAtom } from "../../stores/projectStore";
 import BoardList from "./BoardList";
 
@@ -11,6 +15,8 @@ interface BoardProps {
 
 const Board = ({ showBanner }: BoardProps): JSX.Element => {
   const [openedBoard, setOpenedBoard] = useAtom(openedBoardAtom);
+  const draggingListLocation = useAtomValue(draggingListLocationAtom);
+  const draggingListIndex = useAtomValue(draggingListIndexAtom);
 
   const [isAddingBoard, setIsAddingBoard] = React.useState<boolean>(false);
   const addBoardInputRef = React.useRef<HTMLInputElement>(null);
@@ -54,19 +60,37 @@ const Board = ({ showBanner }: BoardProps): JSX.Element => {
     setIsAddingBoard(false);
   };
 
+  const listContainerRef = React.useRef<HTMLDivElement>(null);
+
   return (
-    <div className="px-4 py-2.5 grid grid-rows-[52px_auto] select-none">
+    <div className="px-4 py-2.5 grid grid-rows-[52px_auto] select-none overflow-x-hidden">
       <h1 className="text-2xl font-bold">{openedBoard?.name ?? ""}</h1>
-      <div className="flex pb-5">
+      <div className="flex w-full pb-5 overflow-x-auto" ref={listContainerRef}>
         {openedBoard !== null &&
           openedBoard.lists.map((list, idx) => (
-            <BoardList
-              key={list.title}
-              boardList={list}
-              boardListIndex={idx}
-              showBanner={showBanner}
-            />
+            <>
+              {(draggingListIndex ?? -1) > idx &&
+                draggingListLocation === idx && (
+                  <div className="min-w-[260px] h-full rounded-2xl px-4 py-2 ml-4 select-none first:ml-0"></div>
+                )}
+              <BoardList
+                key={list.title}
+                boardList={list}
+                boardListIndex={idx}
+                showBanner={showBanner}
+                listContainerRef={listContainerRef}
+              />
+              {draggingListIndex !== null &&
+                draggingListIndex <= idx &&
+                draggingListLocation === idx && (
+                  <div className="min-w-[260px] h-full rounded-2xl px-4 py-2 ml-4 select-none first:ml-0"></div>
+                )}
+            </>
           ))}
+        {draggingListIndex !== null &&
+          draggingListLocation >= openedBoard!.lists.length && (
+            <div className="min-w-[260px] h-full rounded-2xl px-4 py-2 ml-4 select-none first:ml-0"></div>
+          )}
         {
           <div
             className="grid-rows-[28px_auto_40px] w-[260px] h-full bg-blue-300 rounded-2xl px-4 py-2 ml-4 select-none first:ml-0"
@@ -89,7 +113,7 @@ const Board = ({ showBanner }: BoardProps): JSX.Element => {
           </div>
         }
         <button
-          className="self-start w-10 h-10 bg-white flex ml-3 rounded-xl cursor-pointer hover:bg-white/50"
+          className="self-start min-w-10 min-h-10 bg-white flex ml-3 rounded-xl cursor-pointer hover:bg-white/50"
           onClick={onAddListClick}
         >
           <IoAddOutline className="mx-auto my-auto" size={32} />

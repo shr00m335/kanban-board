@@ -33,6 +33,7 @@ const BoardListItem = ({
   let mouseHoldTimer: number | null = null;
 
   const handleMouseDown = (e: React.MouseEvent<HTMLParagraphElement>) => {
+    e.stopPropagation();
     if (e.button !== 0) return;
     if (mouseHoldTimer !== null) clearTimeout(mouseHoldTimer);
     console.log(e);

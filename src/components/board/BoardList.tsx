@@ -1,7 +1,12 @@
 import { useAtom, useAtomValue } from "jotai";
 import React from "react";
 import { BoardListModel, BoardModel } from "../../models/project";
-import { draggingItemLocationAtom } from "../../stores/dndStore";
+import {
+  draggingItemLocationAtom,
+  draggingListIndexAtom,
+  draggingListLocationAtom,
+  firstListLocationAtom,
+} from "../../stores/dndStore";
 import { openedBoardAtom } from "../../stores/projectStore";
 import BoardListItem from "./BoardListItem";
 
@@ -9,18 +14,35 @@ interface BoardListProps {
   boardList: BoardListModel;
   boardListIndex: number;
   showBanner: (success: boolean, message: string) => void;
+  listContainerRef: React.RefObject<HTMLDivElement>;
 }
 
 const BoardList = ({
   boardList,
   boardListIndex,
   showBanner,
+  listContainerRef,
 }: BoardListProps): JSX.Element => {
   const [openedBoard, setOpenedBoard] = useAtom(openedBoardAtom);
   const draggingItemLocation = useAtomValue(draggingItemLocationAtom);
+  const [firstListLocation, setFirstListLocation] = useAtom(
+    firstListLocationAtom
+  );
+  const [draggingListIndex, setDraggingListIndex] = useAtom(
+    draggingListIndexAtom
+  );
+  const [draggingListLocation, setDraggingListLocation] = useAtom(
+    draggingListLocationAtom
+  );
 
   const [isAddingItem, setIsAddingItem] = React.useState<boolean>(false);
   const addItemInputRef = React.useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = React.useState<boolean>(false);
+  const [mousePos, setMousePos] = React.useState<number[]>([-1, -1]);
+  const [dragOffset, setDragOffset] = React.useState<number[]>([0, 0]);
+  const [listHeight, setListHeight] = React.useState<number>(0);
+
+  const listRef = React.useRef<HTMLDivElement>(null);
 
   const onAddItemClick = (): void => {
     console.log("clicked");
@@ -64,45 +86,144 @@ const BoardList = ({
     setIsAddingItem(false);
   };
 
+  let listHoldTimer: number | null = null;
+
+  const onListMouseDown = (e: React.MouseEvent<HTMLDivElement>): void => {
+    if (e.button !== 0 || listRef.current === null) return;
+    listHoldTimer = setTimeout(() => {
+      const rect = listRef.current!.getBoundingClientRect();
+      setDraggingListIndex(boardListIndex);
+      setListHeight(rect.height);
+      setDragOffset([e.clientX - rect.left, e.clientY - rect.top]);
+      setMousePos([rect.left, rect.top]);
+      setDraggingListLocation(
+        e.clientX + (listContainerRef.current?.scrollLeft ?? 0) <
+          firstListLocation
+          ? -1
+          : Math.floor(
+              (e.clientX +
+                +(listContainerRef.current?.scrollLeft ?? 0) -
+                firstListLocation) /
+                280
+            )
+      );
+      setIsDragging(true);
+    }, 100);
+  };
+
+  const onListMouseUp = (e: React.MouseEvent<HTMLDivElement>): void => {
+    if (e.button !== 0) return;
+    if (listHoldTimer !== null) {
+      clearTimeout(listHoldTimer);
+      listHoldTimer = null;
+    }
+  };
+
+  const onDndMouseMove = (e: React.MouseEvent<HTMLDivElement>): void => {
+    setMousePos([e.clientX - dragOffset[0], e.clientY - dragOffset[1]]);
+    setDraggingListLocation(
+      e.clientX + (listContainerRef.current?.scrollLeft ?? 0) <
+        firstListLocation
+        ? -2
+        : Math.floor(
+            (e.clientX +
+              (listContainerRef.current?.scrollLeft ?? 0) -
+              firstListLocation) /
+              280
+          )
+    );
+  };
+
+  const onDndMouseUp = (e: React.MouseEvent<HTMLDivElement>): void => {
+    setIsDragging(false);
+    // Set new list location
+    if (
+      draggingListIndex !== null &&
+      draggingListLocation > -1 &&
+      openedBoard !== null
+    ) {
+      let updatedBoard: BoardModel = {
+        ...openedBoard,
+        lists: openedBoard.lists.filter((_, idx) => idx !== draggingListIndex),
+      };
+      updatedBoard.lists = [
+        ...updatedBoard.lists.slice(0, draggingListLocation),
+        openedBoard.lists[draggingListIndex],
+        ...updatedBoard.lists.slice(draggingListLocation),
+      ];
+      console.log(updatedBoard);
+      setOpenedBoard(updatedBoard);
+    }
+    setDraggingListLocation(-2);
+    setDraggingListIndex(null);
+  };
+
+  React.useEffect(() => {
+    if (boardListIndex === 0 && listRef.current !== null) {
+      setFirstListLocation(listRef.current.getBoundingClientRect().left - 50);
+    }
+  }, [listRef]);
+
   return (
-    <div className="grid grid-rows-[28px_auto_40px] w-[260px] h-full bg-blue-300 rounded-2xl px-4 py-2 ml-4 select-none first:ml-0">
-      {/* Title */}
-      <h2 className="text-lg font-bold my-auto">{boardList.title}</h2>
-      {/* Items */}
-      <div className="overflow-y-auto h-full">
-        {boardList.items.map((item, idx) => (
-          <>
-            {boardListIndex == draggingItemLocation.listIndex &&
-              idx === draggingItemLocation.itemIndex && (
-                <div
-                  key="placeholder"
-                  className="w-[224px] h-[36px] mt-2"
-                ></div>
-              )}
-            <BoardListItem
-              key={boardList.title + item}
-              boardListIndex={boardListIndex}
-              itemIndex={idx}
-              item={item}
-            />
-          </>
-        ))}
-        <input
-          ref={addItemInputRef}
-          className={`bg-white w-[224px] px-2 py-1.5 mt-2 rounded-xl`}
-          style={{ display: isAddingItem ? "block" : "none" }}
-          onKeyDown={onAddItemInputKeyDown}
-          onBlur={onAddItemInputBlur}
-        />
-      </div>
-      {/* Add Button */}
-      <button
-        className="text-left my-auto text-gray-400 select-none hover:text-gray-600"
-        onClick={onAddItemClick}
+    <>
+      <div
+        ref={listRef}
+        style={{
+          position: isDragging ? "absolute" : "static",
+          left: mousePos[0],
+          top: mousePos[1] - 20,
+          height: isDragging ? listHeight : "100%",
+        }}
+        className="grid grid-rows-[28px_auto_40px] min-w-[260px] bg-blue-300 rounded-2xl px-4 py-2 ml-4 select-none first:ml-0"
+        onMouseDown={onListMouseDown}
+        onMouseUp={onListMouseUp}
       >
-        + Add Item
-      </button>
-    </div>
+        {/* Title */}
+        <h2 className="text-lg font-bold my-auto">{boardList.title}</h2>
+        {/* Items */}
+        <div className="overflow-y-auto h-full">
+          {boardList.items.map((item, idx) => (
+            <>
+              {boardListIndex == draggingItemLocation.listIndex &&
+                idx === draggingItemLocation.itemIndex && (
+                  <div
+                    key="placeholder"
+                    className="w-[224px] h-[36px] mt-2"
+                  ></div>
+                )}
+              <BoardListItem
+                key={boardList.title + item}
+                boardListIndex={boardListIndex}
+                itemIndex={idx}
+                item={item}
+              />
+            </>
+          ))}
+          <input
+            ref={addItemInputRef}
+            className={`bg-white w-[224px] px-2 py-1.5 mt-2 rounded-xl`}
+            style={{ display: isAddingItem ? "block" : "none" }}
+            onKeyDown={onAddItemInputKeyDown}
+            onBlur={onAddItemInputBlur}
+          />
+        </div>
+        {/* Add Button */}
+        <button
+          className="text-left my-auto text-gray-400 select-none hover:text-gray-600"
+          onClick={onAddItemClick}
+        >
+          + Add Item
+        </button>
+      </div>
+      {/* Drag and drop overlay */}
+      {isDragging && (
+        <div
+          className="absolute w-screen h-screen top-0 left-0 z-10"
+          onMouseMove={onDndMouseMove}
+          onMouseUp={onDndMouseUp}
+        ></div>
+      )}
+    </>
   );
 };
 

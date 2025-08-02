@@ -12,7 +12,12 @@
   cursor: default;
   padding: 0;
   margin: 0;
-  overflow-y: hidden;
+  overflow: hidden !important;
+}
+
+html,
+body {
+  overflow: hidden !important;
 }
 
 button {

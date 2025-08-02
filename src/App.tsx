@@ -24,8 +24,19 @@ function App() {
       setShowBanner(false);
     }, 2500);
   };
+
+  React.useEffect(() => {
+    const lockScroll = () => {
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener("scroll", lockScroll);
+    return () => {
+      window.removeEventListener("scroll", lockScroll);
+    };
+  }, []);
+
   return (
-    <main className="w-screen h-screen grid grid-cols-[234px_auto] overflow-y-hidden">
+    <main className="w-screen h-screen grid grid-cols-[234px_auto] overflow-hidden">
       <Sidebar
         showBanner={showMessage}
         onCreateClick={() => setShowPopup(true)}
