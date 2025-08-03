@@ -1,5 +1,6 @@
 import { useAtom, useAtomValue } from "jotai";
 import React from "react";
+import { FaTrash } from "react-icons/fa";
 import { BoardListModel, BoardModel } from "../../models/project";
 import {
   draggingItemLocationAtom,
@@ -42,6 +43,9 @@ const BoardList = ({
   const [dragOffset, setDragOffset] = React.useState<number[]>([0, 0]);
   const [listHeight, setListHeight] = React.useState<number>(0);
   const [isEditingTitle, setIsEditingTitle] = React.useState<boolean>(false);
+  const [isDeleteOverlap, setIsDeleteOverlap] = React.useState<boolean>(false);
+  const [isShowingDeletePopup, setIsShowingDeletePopup] =
+    React.useState<boolean>(false);
 
   const listRef = React.useRef<HTMLDivElement>(null);
 
@@ -122,27 +126,34 @@ const BoardList = ({
 
   const onDndMouseMove = (e: React.MouseEvent<HTMLDivElement>): void => {
     setMousePos([e.clientX - dragOffset[0], e.clientY - dragOffset[1]]);
-    setDraggingListLocation(
-      e.clientX + (listContainerRef.current?.scrollLeft ?? 0) <
-        firstListLocation
-        ? -2
-        : Math.floor(
-            (e.clientX +
-              (listContainerRef.current?.scrollLeft ?? 0) -
-              firstListLocation) /
-              280
-          )
-    );
+    if (e.clientX > 235) {
+      setDraggingListLocation(
+        e.clientX + (listContainerRef.current?.scrollLeft ?? 0) <
+          firstListLocation
+          ? -2
+          : Math.floor(
+              (e.clientX +
+                (listContainerRef.current?.scrollLeft ?? 0) -
+                firstListLocation) /
+                280
+            )
+      );
+      setIsDeleteOverlap(false);
+    } else {
+      setDraggingListLocation(-1);
+      setIsDeleteOverlap(true);
+    }
   };
 
   const onDndMouseUp = (e: React.MouseEvent<HTMLDivElement>): void => {
+    if (e.button !== 0) return;
     setIsDragging(false);
+    if (openedBoard === null) return;
     // Set new list location
-    if (
-      draggingListIndex !== null &&
-      draggingListLocation > -1 &&
-      openedBoard !== null
-    ) {
+    if (isDeleteOverlap) {
+      setIsDeleteOverlap(false);
+      setIsShowingDeletePopup(true);
+    } else if (draggingListIndex !== null && draggingListLocation > -1) {
       let updatedBoard: BoardModel = {
         ...openedBoard,
         lists: openedBoard.lists.filter((_, idx) => idx !== draggingListIndex),
@@ -154,9 +165,9 @@ const BoardList = ({
       ];
       console.log(updatedBoard);
       setOpenedBoard(updatedBoard);
+      setDraggingListIndex(null);
     }
-    setDraggingListLocation(-2);
-    setDraggingListIndex(null);
+    setDraggingListLocation(-1);
   };
 
   React.useEffect(() => {
@@ -211,6 +222,17 @@ const BoardList = ({
       setOpenedBoard(updatedBoard);
     }
     setIsEditingTitle(false);
+  };
+
+  const confirmDeleteList = () => {
+    if (openedBoard === null) return;
+    const updatedBoard: BoardModel = {
+      ...openedBoard,
+      lists: openedBoard.lists.filter((_, idx) => idx !== draggingListIndex),
+    };
+    setOpenedBoard(updatedBoard);
+    setIsShowingDeletePopup(false);
+    setDraggingListIndex(null);
   };
 
   return (
@@ -280,7 +302,38 @@ const BoardList = ({
           className="absolute w-screen h-screen top-0 left-0 z-10"
           onMouseMove={onDndMouseMove}
           onMouseUp={onDndMouseUp}
-        ></div>
+        >
+          <div
+            className="absolute flex items-center justify-center w-[235px] h-screen left-0 top-0 bg-red-500 text-white"
+            style={{ opacity: isDeleteOverlap ? 0.9 : 0.5 }}
+          >
+            <FaTrash size={48} />
+          </div>
+        </div>
+      )}
+      {isShowingDeletePopup && (
+        <div className="absolute flex items-center justify-center top-0 left-0 w-screen h-screen bg-black/30 ">
+          <div className="bg-[#EFEFEF] w-[500px] h-52 flex flex-col justify-between px-4 py-3 rounded-xl">
+            <h2 className="font-bold text-2xl ">Delete List</h2>
+            <p className="mx-auto text-lg">
+              Are you sure you want to delete <strong>{boardList.title}</strong>
+            </p>
+            <div className="flex ml-auto">
+              <button
+                className="bg-white px-6 py-1 rounded-xl mr-4"
+                onClick={() => setIsShowingDeletePopup(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="bg-red-500 text-white px-6 py-1 rounded-xl"
+                onClick={confirmDeleteList}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
