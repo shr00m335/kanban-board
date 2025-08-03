@@ -130,13 +130,13 @@ const Sidebar = ({
   };
 
   const handleContextMenu = (
-    e: React.MouseEvent<HTMLButtonElement>,
+    e: React.MouseEvent<HTMLSpanElement>,
     idx: number
   ): void => {
     e.preventDefault();
     e.stopPropagation();
     setContextMenuItem(idx);
-    const rect = (e.target as HTMLButtonElement).getBoundingClientRect();
+    const rect = (e.target as HTMLSpanElement).getBoundingClientRect();
     setContextMenuLocation({
       x: rect.right,
       y: rect.top,
@@ -158,6 +158,88 @@ const Sidebar = ({
     handleContextMenuClose();
   };
 
+  const handleContextMenuRename = (): void => {
+    const items = Array.from(
+      document.querySelectorAll("div#items-container > span")
+    ) as HTMLButtonElement[];
+    items[contextMenuItem].contentEditable = "true";
+    items[contextMenuItem].focus();
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(items[contextMenuItem]);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    setShowContextMenu(false);
+  };
+
+  const onItemKeyDown = (e: React.KeyboardEvent<HTMLSpanElement>): void => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      (e.target as HTMLSpanElement).blur();
+    }
+  };
+
+  const renameProject = async (
+    projectIndex: number,
+    newName: string
+  ): Promise<void> => {
+    const projectId = projects[projectIndex].id;
+    const result = await invoke<CommandResult<ProjectModel>>("read_project", {
+      projectId,
+    });
+    if (!result.success || !result.data) {
+      showBanner(false, result.message ?? "No error message");
+      return;
+    }
+    let project = result.data;
+    const oldName = project.name;
+    project.name = newName;
+    const saveResult = await invoke<CommandResult<ProjectModel>>(
+      "save_project",
+      {
+        project,
+      }
+    );
+    if (!saveResult.success) {
+      showBanner(false, result.message ?? "No error message");
+      return;
+    }
+    setProjects([
+      ...projects.slice(0, projectIndex),
+      project,
+      ...projects.slice(projectIndex + 1),
+    ]);
+    showBanner(true, `Renamed ${oldName} to ${newName}`);
+  };
+
+  const onItemBlur = (e: React.FocusEvent<HTMLSpanElement>): void => {
+    console.log("blur");
+    console.log(contextMenuItem);
+    if (contextMenuItem === -1) return;
+    // Rename item
+    const targetSpan = e.target as HTMLSpanElement;
+    targetSpan.contentEditable = "false";
+    const newName = targetSpan.innerText.trim();
+    if (newName.length === 0) {
+      showBanner(false, `New name cannot be empty`);
+      targetSpan.innerText = projects[contextMenuItem].name;
+    } else if (newName.length > 255) {
+      showBanner(false, `New name cannot exceed 255 characters`);
+      targetSpan.innerText = projects[contextMenuItem].name;
+    } else if (openedProject === null) {
+      renameProject(contextMenuItem, newName);
+    } else {
+      const board = openedProject.boards[contextMenuItem];
+      const oldName = board.name;
+      board.name = newName;
+      let updatedProject: ProjectModel = { ...openedProject };
+      updatedProject.boards[contextMenuItem] = board;
+      setOpenedProject(updatedProject);
+      showBanner(true, `Renamed ${oldName} to ${newName}`);
+    }
+    setContextMenuItem(-1);
+  };
+
   return (
     <>
       <div className="w-[234px] h-full bg-white grid grid-rows-[52px_auto_52px]">
@@ -172,31 +254,38 @@ const Sidebar = ({
           )}
         </h1>
         {/* Items */}
-        <div className="overflow-y-auto select-none">
+        <div
+          id="items-container"
+          className="overflow-y-auto select-none flex flex-col"
+        >
           {openedProject === null
             ? projects.map((project, idx) => (
-                <button
+                <span
                   key={project.id.join("")}
-                  className=" w-full text-left px-3 py-1 text-lg hover:bg-black/10"
+                  className=" w-full text-left px-3 py-1 text-lg cursor-pointer hover:bg-black/10"
                   onClick={() => openProject(project.id)}
                   onContextMenu={(e) => handleContextMenu(e, idx)}
+                  onKeyDown={onItemKeyDown}
+                  onBlur={onItemBlur}
                 >
                   {project.name}
-                </button>
+                </span>
               ))
             : openedProject!.boards.map((board, idx) => (
-                <button
+                <span
                   key={board.name}
-                  className={`w-full text-left px-3 py-1 text-lg ${
+                  className={`w-full text-left px-3 py-1 text-lg cursor-pointer ${
                     contextMenuItem === idx
                       ? "bg-black/10"
                       : "hover:bg-black/10"
                   }`}
                   onClick={() => openBoard(board.name)}
                   onContextMenu={(e) => handleContextMenu(e, idx)}
+                  onKeyDown={onItemKeyDown}
+                  onBlur={onItemBlur}
                 >
                   {board.name}
-                </button>
+                </span>
               ))}
           <input
             ref={addItemRef}
@@ -223,7 +312,9 @@ const Sidebar = ({
           <ContextMenuButton onClick={handleContextMenuOpen}>
             Open
           </ContextMenuButton>
-          <ContextMenuButton>Rename</ContextMenuButton>
+          <ContextMenuButton onClick={handleContextMenuRename}>
+            Rename
+          </ContextMenuButton>
           <ContextMenuButton>Duplicate</ContextMenuButton>
           <ContextMenuButton>
             <span className="text-red-500">Delete</span>

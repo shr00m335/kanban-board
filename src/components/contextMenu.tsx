@@ -38,7 +38,10 @@ export const ContextMenuButton = ({
   return (
     <button
       className="text-nowrap px-2 py-1.5 text-left hover:bg-black/10 first:pt-2 first:pb-1.5 last:pt-1.5 last:pb-2"
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (onClick) onClick();
+      }}
     >
       {children}
     </button>
