@@ -172,6 +172,32 @@ const Sidebar = ({
     setShowContextMenu(false);
   };
 
+  const handleContextMenuDuplicate = (): void => {
+    if (openedProject !== null) {
+      const targetBoard: BoardModel = {
+        ...openedProject.boards[contextMenuItem],
+      };
+      let nameCount: number = 2;
+      const boardNames: string[] = openedProject.boards.map((x) => x.name);
+      let newName: string = `${targetBoard.name} ${nameCount}`;
+      while (boardNames.includes(newName)) {
+        nameCount += 1;
+        newName = `${targetBoard.name} ${nameCount}`;
+      }
+      targetBoard.name = newName;
+      setOpenedProject({
+        ...openedProject,
+        boards: [...openedProject.boards, targetBoard],
+      });
+      showBanner(
+        true,
+        `Duplicated "${openedProject.boards[contextMenuItem].name}" as "${newName}"`
+      );
+    }
+    setShowContextMenu(false);
+    setContextMenuItem(-1);
+  };
+
   const onItemKeyDown = (e: React.KeyboardEvent<HTMLSpanElement>): void => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -315,7 +341,11 @@ const Sidebar = ({
           <ContextMenuButton onClick={handleContextMenuRename}>
             Rename
           </ContextMenuButton>
-          <ContextMenuButton>Duplicate</ContextMenuButton>
+          {openedProject !== null && (
+            <ContextMenuButton onClick={handleContextMenuDuplicate}>
+              Duplicate
+            </ContextMenuButton>
+          )}
           <ContextMenuButton>
             <span className="text-red-500">Delete</span>
           </ContextMenuButton>
