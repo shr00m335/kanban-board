@@ -237,7 +237,7 @@ const BoardList = ({
     if (openedBoard === null) return;
     const updatedBoard: BoardModel = {
       ...openedBoard,
-      lists: openedBoard.lists.filter((_, idx) => idx !== draggingListIndex),
+      lists: openedBoard.lists.filter((_, idx) => idx !== boardListIndex),
     };
     setOpenedBoard(updatedBoard);
     setIsShowingDeletePopup(false);
@@ -275,6 +275,11 @@ const BoardList = ({
         ...openedBoard.lists.slice(boardListIndex + 1),
       ],
     });
+    setIsShowingContextMenu(false);
+  };
+
+  const handleContextMenuDelete = () => {
+    setIsShowingDeletePopup(true);
     setIsShowingContextMenu(false);
   };
 
@@ -399,7 +404,7 @@ const BoardList = ({
               />
             </div>
           </ContextMenuButton>
-          <ContextMenuButton>
+          <ContextMenuButton onClick={handleContextMenuDelete}>
             <span className="text-red-500">Delete</span>
           </ContextMenuButton>
         </ContextMenu>
