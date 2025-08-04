@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useAtom, useSetAtom } from "jotai";
 import React from "react";
-import { IoArrowBack } from "react-icons/io5";
+import { IoArrowBack, IoSettingsSharp } from "react-icons/io5";
 import { CommandResult } from "../models/commandResult";
 import { BoardModel, ProjectModel } from "../models/project";
 import {
@@ -379,12 +379,18 @@ const Sidebar = ({
             onBlur={onAddItemInputBlur}
           />
         </div>
-        <button
-          className="text-left px-3 my-auto text-gray-400 select-none hover:text-gray-600"
-          onClick={onCreateBtnClick}
-        >
-          + Add {openedProject === null ? "Project" : "Board"}
-        </button>
+        <div className="flex">
+          <button
+            className="text-left px-3 my-auto text-gray-400 select-none hover:text-gray-600"
+            onClick={onCreateBtnClick}
+          >
+            + Add {openedProject === null ? "Project" : "Board"}
+          </button>
+          <IoSettingsSharp
+            className="ml-auto mr-3 my-auto cursor-pointer hover:text-black/50"
+            size={24}
+          />
+        </div>
       </div>
       {showContextMenu && (
         <ContextMenu
