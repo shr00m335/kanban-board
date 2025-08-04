@@ -9,6 +9,7 @@ import {
   firstListLocationAtom,
 } from "../../stores/dndStore";
 import { openedBoardAtom } from "../../stores/projectStore";
+import { ContextMenu, ContextMenuButton } from "../contextMenu";
 import { DeletePopup } from "../DeletePopup";
 import BoardListItem from "./BoardListItem";
 
@@ -47,8 +48,16 @@ const BoardList = ({
   const [isDeleteOverlap, setIsDeleteOverlap] = React.useState<boolean>(false);
   const [isShowingDeletePopup, setIsShowingDeletePopup] =
     React.useState<boolean>(false);
+  const [isShowingContextMenu, setIsShowingContextMenu] =
+    React.useState<boolean>(false);
+  const [contenxtMenuLocation, setContextMenuLocation] = React.useState<{
+    x: number;
+    y: number;
+  }>({ x: 0, y: 0 });
+  const [listColor, setListColor] = React.useState<string>("#ffffff");
 
   const listRef = React.useRef<HTMLDivElement>(null);
+  const contextMenuColorPickerRef = React.useRef<HTMLInputElement>(null);
 
   const onAddItemClick = (): void => {
     console.log("clicked");
@@ -236,6 +245,23 @@ const BoardList = ({
     setDraggingListIndex(null);
   };
 
+  const handleContextMenu = (e: React.MouseEvent<HTMLSpanElement>): void => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenuLocation({
+      x: e.clientX,
+      y: e.clientY,
+    });
+    setIsShowingContextMenu(true);
+  };
+
+  const handleContextMenuColor = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ): void => {
+    setListColor(e.target.value);
+    setIsShowingContextMenu(false);
+  };
+
   return (
     <>
       <div
@@ -245,10 +271,12 @@ const BoardList = ({
           left: mousePos[0],
           top: mousePos[1] - 20,
           height: isDragging ? listHeight : "100%",
+          background: listColor,
         }}
-        className="grid grid-rows-[28px_auto_40px] min-w-[260px] bg-blue-300 rounded-2xl px-4 py-2 ml-4 select-none first:ml-0"
+        className="grid grid-rows-[28px_auto_40px] min-w-[260px] rounded-2xl px-4 py-2 ml-4 select-none first:ml-0"
         onMouseDown={onListMouseDown}
         onMouseUp={onListMouseUp}
+        onContextMenu={handleContextMenu}
       >
         {/* Title */}
         <h2
@@ -318,6 +346,37 @@ const BoardList = ({
           onClose={() => setIsShowingDeletePopup(false)}
           onConfirm={confirmDeleteList}
         />
+      )}
+      {isShowingContextMenu && (
+        <ContextMenu
+          x={contenxtMenuLocation.x}
+          y={contenxtMenuLocation.y}
+          onClose={() => setIsShowingContextMenu(false)}
+        >
+          <ContextMenuButton
+            onClick={() => contextMenuColorPickerRef.current?.click()}
+          >
+            <div className="flex items-center">
+              <div
+                className="w-5 h-5 rounded-full"
+                style={{
+                  background: listColor,
+                }}
+              ></div>
+              <span className="ml-2">Color</span>
+              <input
+                ref={contextMenuColorPickerRef}
+                type="color"
+                className="cursor-pointer opacity-0"
+                onClick={(e) => e.stopPropagation()}
+                onChange={handleContextMenuColor}
+              />
+            </div>
+          </ContextMenuButton>
+          <ContextMenuButton>
+            <span className="text-red-500">Delete</span>
+          </ContextMenuButton>
+        </ContextMenu>
       )}
     </>
   );
