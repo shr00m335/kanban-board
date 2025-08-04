@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useAtom, useSetAtom } from "jotai";
 import React from "react";
+import { IoArrowBack } from "react-icons/io5";
 import { CommandResult } from "../models/commandResult";
 import { BoardModel, ProjectModel } from "../models/project";
 import {
@@ -299,19 +300,32 @@ const Sidebar = ({
     setContextMenuItem(-1);
   };
 
+  const handleExitProject = (): void => {
+    setOpenedProject(null);
+  };
+
   return (
     <>
       <div className="w-[234px] h-full bg-white grid grid-rows-[52px_auto_52px]">
         {/* Title */}
-        <h1 className="font-bold text-2xl mx-auto my-auto select-none">
-          {openedProject === null ? (
-            <div>
-              <span className="text-blue-600">Kanban</span> Board
-            </div>
-          ) : (
-            <span>{openedProject!.name}</span>
+        <div className="flex items-center px-2">
+          {openedProject !== null && (
+            <IoArrowBack
+              className="absolute cursor-pointer hover:text-black/60"
+              size={28}
+              onClick={handleExitProject}
+            />
           )}
-        </h1>
+          <h1 className="font-bold text-2xl mx-auto my-auto select-none">
+            {openedProject === null ? (
+              <div>
+                <span className="text-blue-600">Kanban</span> Board
+              </div>
+            ) : (
+              <span>{openedProject!.name}</span>
+            )}
+          </h1>
+        </div>
         {/* Items */}
         <div
           id="items-container"
