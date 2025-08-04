@@ -85,6 +85,26 @@ pub fn save_project<R: tauri::Runtime>(
     }
 }
 
+#[tauri::command]
+pub fn delete_project<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    project_id: &str,
+) -> CommandResult<()> {
+    let result = project::delete_project(&app, project_id);
+    if result.is_err() {
+        return CommandResult {
+            success: false,
+            data: None,
+            message: Some(result.unwrap_err().message),
+        };
+    }
+    CommandResult {
+        success: true,
+        data: None,
+        message: None,
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
