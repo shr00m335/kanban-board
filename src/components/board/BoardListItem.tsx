@@ -251,7 +251,7 @@ const BoardListItem = ({
       )}
       <p
         ref={itemRef}
-        className={`bg-white w-[224px] px-2 py-1.5 mt-2 rounded-xl whitespace-pre-line ${
+        className={`bg-white w-[224px] px-2 py-1.5 mt-2 rounded-xl whitespace-pre-line border-black border-[1px] ${
           isDragging ? "absolute" : "static"
         }`}
         style={{

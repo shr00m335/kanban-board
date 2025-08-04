@@ -264,7 +264,7 @@ const BoardList = ({
       color: [
         hex.substring(1, 3),
         hex.substring(3, 5),
-        hex.substring(6, 7),
+        hex.substring(5, 7),
       ].map((x) => Number(`0x${x}`)),
     };
     setOpenedBoard({
@@ -276,6 +276,11 @@ const BoardList = ({
       ],
     });
     setIsShowingContextMenu(false);
+  };
+
+  const isLightColor = ([r, g, b]: number[]): boolean => {
+    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    return luminance > 128;
   };
 
   return (
@@ -298,6 +303,7 @@ const BoardList = ({
         <h2
           ref={titleRef}
           className="text-lg font-bold my-auto max-w-[224px] line-clamp-1 truncate"
+          style={{ color: isLightColor(boardList.color) ? "black" : "white" }}
           onDoubleClick={onTitleDbClick}
           onKeyDown={onTitleKeyDown}
           onBlur={onTitleBlur}
@@ -335,7 +341,11 @@ const BoardList = ({
         </div>
         {/* Add Button */}
         <button
-          className="text-left my-auto text-gray-400 select-none hover:text-gray-600"
+          className={`text-left my-auto select-none ${
+            isLightColor(boardList.color)
+              ? "text-gray-600 hover:text-gray-800"
+              : "text-gray-200 hover:text-gray-400"
+          }`}
           onClick={onAddItemClick}
         >
           + Add Item
