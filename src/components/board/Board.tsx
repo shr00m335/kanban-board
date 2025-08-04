@@ -46,6 +46,7 @@ const Board = ({ showBanner }: BoardProps): JSX.Element => {
     } else {
       const newList: BoardListModel = {
         title: listName,
+        color: [0xb6, 0xdf, 0xff],
         items: [],
       };
       const updatedBoard: BoardModel = {
@@ -63,7 +64,7 @@ const Board = ({ showBanner }: BoardProps): JSX.Element => {
   const listContainerRef = React.useRef<HTMLDivElement>(null);
 
   return (
-    <div className="px-4 py-2.5 grid grid-rows-[52px_auto] select-none overflow-x-hidden">
+    <div className=" px-4 py-2.5 grid grid-rows-[52px_auto] select-none overflow-x-hidden">
       <h1 className="text-2xl font-bold">{openedBoard?.name ?? ""}</h1>
       <div className="flex w-full pb-5 overflow-x-auto" ref={listContainerRef}>
         {openedBoard !== null &&
@@ -93,7 +94,7 @@ const Board = ({ showBanner }: BoardProps): JSX.Element => {
           )}
         {
           <div
-            className="grid-rows-[28px_auto_40px] w-[260px] h-full bg-blue-300 rounded-2xl px-4 py-2 ml-4 select-none first:ml-0"
+            className="grid-rows-[28px_auto_40px] w-[260px] h-full bg-[#b6dfff] rounded-2xl px-4 py-2 ml-4 select-none first:ml-0"
             style={{
               display: isAddingBoard ? "grid" : "none",
             }}

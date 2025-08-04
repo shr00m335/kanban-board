@@ -54,7 +54,6 @@ const BoardList = ({
     x: number;
     y: number;
   }>({ x: 0, y: 0 });
-  const [listColor, setListColor] = React.useState<string>("#ffffff");
 
   const listRef = React.useRef<HTMLDivElement>(null);
   const contextMenuColorPickerRef = React.useRef<HTMLInputElement>(null);
@@ -258,7 +257,24 @@ const BoardList = ({
   const handleContextMenuColor = (
     e: React.ChangeEvent<HTMLInputElement>
   ): void => {
-    setListColor(e.target.value);
+    if (openedBoard === null) return;
+    const hex: string = e.target.value;
+    const updatedList: BoardListModel = {
+      ...boardList,
+      color: [
+        hex.substring(1, 3),
+        hex.substring(3, 5),
+        hex.substring(6, 7),
+      ].map((x) => Number(`0x${x}`)),
+    };
+    setOpenedBoard({
+      ...openedBoard,
+      lists: [
+        ...openedBoard.lists.slice(0, boardListIndex),
+        updatedList,
+        ...openedBoard.lists.slice(boardListIndex + 1),
+      ],
+    });
     setIsShowingContextMenu(false);
   };
 
@@ -271,7 +287,7 @@ const BoardList = ({
           left: mousePos[0],
           top: mousePos[1] - 20,
           height: isDragging ? listHeight : "100%",
-          background: listColor,
+          background: `rgb(${boardList.color.join(",")})`,
         }}
         className="grid grid-rows-[28px_auto_40px] min-w-[260px] rounded-2xl px-4 py-2 ml-4 select-none first:ml-0"
         onMouseDown={onListMouseDown}
@@ -360,7 +376,7 @@ const BoardList = ({
               <div
                 className="w-5 h-5 rounded-full"
                 style={{
-                  background: listColor,
+                  background: `rgb(${boardList.color.join(",")})`,
                 }}
               ></div>
               <span className="ml-2">Color</span>

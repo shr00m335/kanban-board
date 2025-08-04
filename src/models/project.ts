@@ -12,5 +12,6 @@ export interface BoardModel {
 
 export interface BoardListModel {
   title: string;
+  color: number[];
   items: string[];
 }
