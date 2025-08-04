@@ -244,6 +244,33 @@ pub fn read_project<P: AppPathProvider>(
     })
 }
 
+pub fn delete_project<P: AppPathProvider>(app: &P, project_id: &str) -> Result<(), KanbanError> {
+    if project_id.len() != 32 {
+        return Err(KanbanError::new(
+            KanbanErrorKind::ProjectError,
+            "Invalid project ID",
+        ));
+    }
+    let project_path = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| KanbanError::from_box_source(KanbanErrorKind::TauriError, e))?
+        .join(PROJECT_PATH)
+        .join(project_id);
+    if fs::exists(&project_path)
+        .map_err(|e| KanbanError::from_source(KanbanErrorKind::IoError, e))?
+    {
+        fs::remove_file(&project_path)
+            .map_err(|e| KanbanError::from_source(KanbanErrorKind::IoError, e))?;
+    } else {
+        return Err(KanbanError::new(
+            KanbanErrorKind::IoError,
+            "Project does not exists",
+        ));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use crate::kanban::boardList::BoardList;
@@ -767,5 +794,21 @@ mod test {
         if fs::exists(&project_path).expect("Failed to check whether file exists") {
             fs::remove_file(&project_path).expect("Failed to remove file");
         }
+    }
+
+    #[test]
+    fn test_delete_project() {
+        let mock = tauri::test::mock_app();
+        let app = mock.app_handle();
+        let project = create_project(app, "Test Project", "Test Description").unwrap();
+        let project_id: String = (&project.id).iter().map(|b| format!("{:02X}", b)).collect();
+        let result = delete_project(app, &project_id);
+        assert!(result.is_ok());
+        let project_path = Manager::path(app)
+            .app_data_dir()
+            .expect("Failed to get data path")
+            .join(PROJECT_PATH)
+            .join(&project_id);
+        assert!(!fs::exists(project_path).unwrap());
     }
 }
