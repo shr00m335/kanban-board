@@ -9,6 +9,7 @@ import {
   openedProjectAtom,
 } from "../stores/projectStore";
 import { ContextMenu, ContextMenuButton } from "./contextMenu";
+import { DeletePopup } from "./DeletePopup";
 
 interface SidebarProp {
   showBanner: (success: boolean, message: string) => void;
@@ -30,6 +31,8 @@ const Sidebar = ({
   }>({ x: 0, y: 0 });
   const [contextMenuItem, setContextMenuItem] = React.useState<number>(-1);
   const [isAddingItem, setIsAddingItem] = React.useState<boolean>(false);
+  const [isShowingDeletePopup, setIsShowingDeletePopup] =
+    React.useState<boolean>(false);
 
   const addItemRef = React.useRef<HTMLInputElement>(null);
 
@@ -194,7 +197,37 @@ const Sidebar = ({
         `Duplicated "${openedProject.boards[contextMenuItem].name}" as "${newName}"`
       );
     }
+    handleContextMenuClose();
+  };
+
+  const handleContextMenuDelete = (): void => {
     setShowContextMenu(false);
+    setIsShowingDeletePopup(true);
+  };
+
+  const handleConfirmDelete = async (): Promise<void> => {
+    setIsShowingDeletePopup(false);
+    if (openedProject === null) {
+      const projectName = projects[contextMenuItem].name;
+      const result = await invoke<CommandResult<string>>("delete_project", {
+        projectId: projects[contextMenuItem].id,
+      });
+      if (result.success) {
+        showBanner(true, `Deleted project "${projectName}"`);
+        setProjects(projects.filter((_, idx) => idx !== contextMenuItem));
+      } else {
+        showBanner(false, result.message ?? "No error message");
+      }
+    } else {
+      const boardName: string = openedProject.boards[contextMenuItem].name;
+      setOpenedProject({
+        ...openedProject,
+        boards: openedProject.boards.filter(
+          (_, idx) => idx !== contextMenuItem
+        ),
+      });
+      showBanner(true, `Deleted board "${boardName}"`);
+    }
     setContextMenuItem(-1);
   };
 
@@ -346,10 +379,21 @@ const Sidebar = ({
               Duplicate
             </ContextMenuButton>
           )}
-          <ContextMenuButton>
+          <ContextMenuButton onClick={handleContextMenuDelete}>
             <span className="text-red-500">Delete</span>
           </ContextMenuButton>
         </ContextMenu>
+      )}
+      {isShowingDeletePopup && (
+        <DeletePopup
+          deleteItem={
+            openedProject === null
+              ? projects[contextMenuItem].name
+              : openedProject.boards[contextMenuItem].name
+          }
+          onClose={() => setIsShowingDeletePopup(false)}
+          onConfirm={handleConfirmDelete}
+        />
       )}
     </>
   );
