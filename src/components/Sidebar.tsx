@@ -221,12 +221,21 @@ const Sidebar = ({
       }
     } else {
       const boardName: string = openedProject.boards[contextMenuItem].name;
-      setOpenedProject({
+      const updatedProject: ProjectModel = {
         ...openedProject,
         boards: openedProject.boards.filter(
           (_, idx) => idx !== contextMenuItem
         ),
+      };
+      const result = await invoke<CommandResult<ProjectModel>>("save_project", {
+        project: updatedProject,
       });
+      if (!result.success || result.data === null) {
+        showBanner(false, result.message ?? "No error message");
+        return;
+      } else {
+        setOpenedProject(result.data ?? updatedProject);
+      }
       showBanner(true, `Deleted board "${boardName}"`);
     }
     setContextMenuItem(-1);
