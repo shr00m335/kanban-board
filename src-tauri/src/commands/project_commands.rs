@@ -88,9 +88,9 @@ pub fn save_project<R: tauri::Runtime>(
 #[tauri::command]
 pub fn delete_project<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
-    project_id: &str,
+    project_id: Vec<u8>,
 ) -> CommandResult<()> {
-    let result = project::delete_project(&app, project_id);
+    let result = project::delete_project(&app, &project_id);
     if result.is_err() {
         return CommandResult {
             success: false,

@@ -244,19 +244,21 @@ pub fn read_project<P: AppPathProvider>(
     })
 }
 
-pub fn delete_project<P: AppPathProvider>(app: &P, project_id: &str) -> Result<(), KanbanError> {
-    if project_id.len() != 32 {
+pub fn delete_project<P: AppPathProvider>(app: &P, project_id: &[u8]) -> Result<(), KanbanError> {
+    // Check project id
+    if project_id.len() != 16 {
         return Err(KanbanError::new(
             KanbanErrorKind::ProjectError,
             "Invalid project ID",
         ));
     }
+    let file_name: String = project_id.iter().map(|b| format!("{:02X}", b)).collect();
     let project_path = app
         .path()
         .app_data_dir()
         .map_err(|e| KanbanError::from_box_source(KanbanErrorKind::TauriError, e))?
         .join(PROJECT_PATH)
-        .join(project_id);
+        .join(file_name);
     if fs::exists(&project_path)
         .map_err(|e| KanbanError::from_source(KanbanErrorKind::IoError, e))?
     {
@@ -801,9 +803,9 @@ mod test {
         let mock = tauri::test::mock_app();
         let app = mock.app_handle();
         let project = create_project(app, "Test Project", "Test Description").unwrap();
-        let project_id: String = (&project.id).iter().map(|b| format!("{:02X}", b)).collect();
-        let result = delete_project(app, &project_id);
+        let result = delete_project(app, &project.id);
         assert!(result.is_ok());
+        let project_id: String = (&project.id).iter().map(|b| format!("{:02X}", b)).collect();
         let project_path = Manager::path(app)
             .app_data_dir()
             .expect("Failed to get data path")
