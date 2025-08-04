@@ -22,6 +22,7 @@ const Board = ({ showBanner }: BoardProps): JSX.Element => {
   const draggingListIndex = useAtomValue(draggingListIndexAtom);
 
   const [isAddingBoard, setIsAddingBoard] = React.useState<boolean>(false);
+  const [lastSavedTime, setLastSavedTime] = React.useState<string | null>(null);
   const addBoardInputRef = React.useRef<HTMLInputElement>(null);
 
   const openedBoardRef = React.useRef(openedBoard);
@@ -102,6 +103,13 @@ const Board = ({ showBanner }: BoardProps): JSX.Element => {
     } else {
       setOpenedProject(result.data ?? updatedProject);
     }
+    // Get time
+    const now = new Date();
+    setLastSavedTime(
+      [now.getHours(), now.getMinutes(), now.getSeconds()]
+        .map((x) => x.toString().padStart(2, "0"))
+        .join(":")
+    );
     console.log("Project Saved");
   };
 
@@ -120,8 +128,16 @@ const Board = ({ showBanner }: BoardProps): JSX.Element => {
 
   return (
     <div className=" px-4 py-2.5 grid grid-rows-[52px_auto] select-none overflow-x-hidden">
-      <h1 className="text-2xl font-bold">{openedBoard?.name ?? ""}</h1>
-      <div className="flex w-full pb-5 overflow-x-auto" ref={listContainerRef}>
+      <div className="flex">
+        <h1 className="text-2xl font-bold m-0">{openedBoard?.name ?? ""}</h1>
+        <span className="ml-auto mt-0 text-sm text-gray-400">
+          Last saved: {lastSavedTime ?? "Not saved"}
+        </span>
+      </div>
+      <div
+        className="flex w-full pt-1 pb-5 overflow-x-auto"
+        ref={listContainerRef}
+      >
         {openedBoard !== null &&
           openedBoard.lists.map((list, idx) => (
             <>
