@@ -311,6 +311,7 @@ const Sidebar = ({
 
   const handleExitProject = (): void => {
     setOpenedProject(null);
+    setOpenedBoard(null);
   };
 
   return (

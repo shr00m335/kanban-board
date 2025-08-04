@@ -1,12 +1,14 @@
+import { invoke } from "@tauri-apps/api/core";
 import { useAtom, useAtomValue } from "jotai";
 import React from "react";
 import { IoAddOutline } from "react-icons/io5";
-import { BoardListModel, BoardModel } from "../../models/project";
+import { CommandResult } from "../../models/commandResult";
+import { BoardListModel, BoardModel, ProjectModel } from "../../models/project";
 import {
   draggingListIndexAtom,
   draggingListLocationAtom,
 } from "../../stores/dndStore";
-import { openedBoardAtom } from "../../stores/projectStore";
+import { openedBoardAtom, openedProjectAtom } from "../../stores/projectStore";
 import BoardList from "./BoardList";
 
 interface BoardProps {
@@ -15,11 +17,23 @@ interface BoardProps {
 
 const Board = ({ showBanner }: BoardProps): JSX.Element => {
   const [openedBoard, setOpenedBoard] = useAtom(openedBoardAtom);
+  const [openedProject, setOpenedProject] = useAtom(openedProjectAtom);
   const draggingListLocation = useAtomValue(draggingListLocationAtom);
   const draggingListIndex = useAtomValue(draggingListIndexAtom);
 
   const [isAddingBoard, setIsAddingBoard] = React.useState<boolean>(false);
   const addBoardInputRef = React.useRef<HTMLInputElement>(null);
+
+  const openedBoardRef = React.useRef(openedBoard);
+  const openedProjectRef = React.useRef(openedProject);
+
+  React.useEffect(() => {
+    openedBoardRef.current = openedBoard;
+  }, [openedBoard]);
+
+  React.useEffect(() => {
+    openedProjectRef.current = openedProject;
+  }, [openedProject]);
 
   const onAddListClick = (): void => {
     setIsAddingBoard(true);
@@ -54,6 +68,7 @@ const Board = ({ showBanner }: BoardProps): JSX.Element => {
         lists: [...openedBoard.lists, newList],
       };
       setOpenedBoard(updatedBoard);
+      console.log(updatedBoard);
     }
     if (addBoardInputRef.current) {
       addBoardInputRef.current.value = "";
@@ -62,6 +77,46 @@ const Board = ({ showBanner }: BoardProps): JSX.Element => {
   };
 
   const listContainerRef = React.useRef<HTMLDivElement>(null);
+
+  const saveProject = async (): Promise<void> => {
+    if (openedProjectRef.current === null || openedBoardRef.current === null)
+      return;
+    const currentBoardIndex = openedProjectRef.current.boards
+      .map((x) => x.name)
+      .indexOf(openedBoardRef.current.name);
+    const updatedBoards = [
+      ...openedProjectRef.current.boards.slice(0, currentBoardIndex),
+      openedBoardRef.current,
+      ...openedProjectRef.current.boards.slice(currentBoardIndex + 1),
+    ];
+    const updatedProject: ProjectModel = {
+      ...openedProjectRef.current,
+      boards: updatedBoards,
+    };
+    const result = await invoke<CommandResult<ProjectModel>>("save_project", {
+      project: updatedProject,
+    });
+    if (!result.success || result.data === null) {
+      showBanner(false, result.message ?? "No error message");
+      return;
+    } else {
+      setOpenedProject(result.data ?? updatedProject);
+    }
+    console.log("Project Saved");
+  };
+
+  let saveTimer: number | undefined;
+  React.useEffect(() => {
+    saveTimer = window.setInterval(async () => {
+      await saveProject();
+    }, 10000);
+
+    return () => {
+      if (saveTimer !== undefined) {
+        clearInterval(saveTimer);
+      }
+    };
+  }, []);
 
   return (
     <div className=" px-4 py-2.5 grid grid-rows-[52px_auto] select-none overflow-x-hidden">
