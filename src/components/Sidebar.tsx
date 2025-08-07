@@ -429,7 +429,12 @@ const Sidebar = ({
           onConfirm={handleConfirmDelete}
         />
       )}
-      {isShowingSettings && <SettingsPopup />}
+      {isShowingSettings && (
+        <SettingsPopup
+          showBanner={showBanner}
+          onClose={() => setIsShowingSettings(false)}
+        />
+      )}
     </>
   );
 };
