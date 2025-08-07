@@ -64,9 +64,14 @@ const Board = ({ showBanner }: BoardProps): JSX.Element => {
     } else if (openedBoard.lists.map((list) => list.title).includes(listName)) {
       showBanner(false, `${listName} already exists`);
     } else {
+      const color = configs?.new_list_default_color ?? "#b6dfff";
       const newList: BoardListModel = {
         title: listName,
-        color: [0xb6, 0xdf, 0xff],
+        color: [
+          color.substring(1, 3),
+          color.substring(3, 5),
+          color.substring(5, 7),
+        ].map((x) => Number(`0x${x}`)),
         items: [],
       };
       const updatedBoard: BoardModel = {
@@ -131,6 +136,16 @@ const Board = ({ showBanner }: BoardProps): JSX.Element => {
     };
   }, [configs]);
 
+  const isLightColor = (color: string): boolean => {
+    const [r, g, b] = [
+      color.substring(1, 3),
+      color.substring(3, 5),
+      color.substring(5, 7),
+    ].map((x) => Number(`0x${x}`));
+    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    return luminance > 128;
+  };
+
   return (
     <div className=" px-4 py-2.5 grid grid-rows-[52px_auto] select-none overflow-x-hidden">
       <div className="flex">
@@ -179,14 +194,23 @@ const Board = ({ showBanner }: BoardProps): JSX.Element => {
           <input
             ref={addBoardInputRef}
             className="text-lg font-bold my-auto"
+            style={{
+              color: isLightColor(configs?.new_list_default_color ?? "#b6dfff")
+                ? "black"
+                : "white",
+            }}
             onKeyDown={onAddListInputKeyDown}
             onBlur={onAddListInputBlur}
           ></input>
           <div className="overflow-y-auto h-full"></div>
           {/* Add Button */}
-          <button className="text-left my-auto text-gray-400 select-none hover:text-gray-600">
-            + Add Item
-          </button>
+          <button
+            className={`text-left my-auto select-none ${
+              isLightColor(configs?.new_list_default_color ?? "#b6dfff")
+                ? "text-gray-600 hover:text-gray-800"
+                : "text-gray-200 hover:text-gray-400"
+            }`}
+          ></button>
         </div>
         <button
           className="self-start min-w-10 min-h-10 bg-white flex ml-3 rounded-xl cursor-pointer hover:bg-white/50"
