@@ -1,7 +1,7 @@
 use crate::{
     errors::kanban_error::{KanbanError, KanbanErrorKind},
     file_system::{binary_reader::BinaryReader, binary_writer::BinaryWriter},
-    kanban::boardList::{read_all_board_lists, write_all_board_lists, BoardList},
+    kanban::board_list::{read_all_board_lists, write_all_board_lists, BoardList},
 };
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq)]

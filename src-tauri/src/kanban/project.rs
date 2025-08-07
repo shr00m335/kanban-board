@@ -275,7 +275,7 @@ pub fn delete_project<P: AppPathProvider>(app: &P, project_id: &[u8]) -> Result<
 
 #[cfg(test)]
 mod test {
-    use crate::kanban::boardList::BoardList;
+    use crate::kanban::board_list::BoardList;
 
     use super::*;
     use serial_test::serial;

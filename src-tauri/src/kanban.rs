@@ -1,4 +1,4 @@
 mod board;
-mod boardList;
+mod board_list;
 pub mod config;
 pub mod project;
