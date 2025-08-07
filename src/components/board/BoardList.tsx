@@ -9,7 +9,7 @@ import {
   firstListLocationAtom,
 } from "../../stores/dndStore";
 import { openedBoardAtom } from "../../stores/projectStore";
-import { ContextMenu, ContextMenuButton } from "../contextMenu";
+import { ContextMenu, ContextMenuButton } from "../ContextMenu";
 import { DeletePopup } from "../DeletePopup";
 import BoardListItem from "./BoardListItem";
 

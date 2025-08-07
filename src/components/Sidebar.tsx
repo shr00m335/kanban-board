@@ -9,7 +9,7 @@ import {
   openedBoardAtom,
   openedProjectAtom,
 } from "../stores/projectStore";
-import { ContextMenu, ContextMenuButton } from "./contextMenu";
+import { ContextMenu, ContextMenuButton } from "./ContextMenu";
 import { DeletePopup } from "./DeletePopup";
 import SettingsPopup from "./SettingsPopup";
 
