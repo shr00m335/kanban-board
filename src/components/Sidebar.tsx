@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom } from "jotai";
 import React from "react";
 import { IoArrowBack, IoSettingsSharp } from "react-icons/io5";
 import { CommandResult } from "../models/commandResult";
@@ -24,7 +24,7 @@ const Sidebar = ({
 }: SidebarProp): React.ReactNode => {
   const [projects, setProjects] = useAtom(allProjectsAtom);
   const [openedProject, setOpenedProject] = useAtom(openedProjectAtom);
-  const setOpenedBoard = useSetAtom(openedBoardAtom);
+  const [openedBoard, setOpenedBoard] = useAtom(openedBoardAtom);
 
   const [showContextMenu, setShowContextMenu] = React.useState<boolean>(false);
   const [contenxtMenuLocation, setContextMenuLocation] = React.useState<{
@@ -39,6 +39,16 @@ const Sidebar = ({
     React.useState<boolean>(false);
 
   const addItemRef = React.useRef<HTMLInputElement>(null);
+  const openedBoardRef = React.useRef(openedBoard);
+  const openedProjectRef = React.useRef(openedProject);
+
+  React.useEffect(() => {
+    openedBoardRef.current = openedBoard;
+  }, [openedBoard]);
+
+  React.useEffect(() => {
+    openedProjectRef.current = openedProject;
+  }, [openedProject]);
 
   React.useEffect(() => {
     invoke<CommandResult<ProjectModel[]>>("get_all_projects").then(
@@ -75,10 +85,13 @@ const Sidebar = ({
     setOpenedProject(result.data!);
   };
 
-  const openBoard = (boardName: string): void => {
+  const openBoard = async (boardName: string): Promise<void> => {
     if (openedProject === null) {
       showBanner(false, "No opened project.");
       return;
+    }
+    if (openedBoard !== null) {
+      await saveProject();
     }
     let board: BoardModel | undefined = openedProject.boards.find(
       (x) => x.name === boardName
@@ -312,7 +325,34 @@ const Sidebar = ({
     setContextMenuItem(-1);
   };
 
-  const handleExitProject = (): void => {
+  const saveProject = async (): Promise<void> => {
+    if (openedProjectRef.current === null || openedBoardRef.current === null)
+      return;
+    const currentBoardIndex = openedProjectRef.current.boards
+      .map((x) => x.name)
+      .indexOf(openedBoardRef.current.name);
+    const updatedBoards = [
+      ...openedProjectRef.current.boards.slice(0, currentBoardIndex),
+      openedBoardRef.current,
+      ...openedProjectRef.current.boards.slice(currentBoardIndex + 1),
+    ];
+    const updatedProject: ProjectModel = {
+      ...openedProjectRef.current,
+      boards: updatedBoards,
+    };
+    const result = await invoke<CommandResult<ProjectModel>>("save_project", {
+      project: updatedProject,
+    });
+    if (!result.success || result.data === null) {
+      showBanner(false, result.message ?? "No error message");
+      return;
+    } else {
+      setOpenedProject(result.data ?? updatedProject);
+    }
+  };
+
+  const handleExitProject = async (): Promise<void> => {
+    await saveProject();
     setOpenedProject(null);
     setOpenedBoard(null);
   };
