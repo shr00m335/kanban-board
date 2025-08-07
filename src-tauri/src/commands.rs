@@ -1,3 +1,4 @@
+pub mod configs_commands;
 pub mod project_commands;
 
 #[derive(Debug, serde::Serialize)]
