@@ -11,6 +11,7 @@ import {
 } from "../stores/projectStore";
 import { ContextMenu, ContextMenuButton } from "./contextMenu";
 import { DeletePopup } from "./DeletePopup";
+import SettingsPopup from "./SettingsPopup";
 
 interface SidebarProp {
   showBanner: (success: boolean, message: string) => void;
@@ -33,6 +34,8 @@ const Sidebar = ({
   const [contextMenuItem, setContextMenuItem] = React.useState<number>(-1);
   const [isAddingItem, setIsAddingItem] = React.useState<boolean>(false);
   const [isShowingDeletePopup, setIsShowingDeletePopup] =
+    React.useState<boolean>(false);
+  const [isShowingSettings, setIsShowingSettings] =
     React.useState<boolean>(false);
 
   const addItemRef = React.useRef<HTMLInputElement>(null);
@@ -387,8 +390,9 @@ const Sidebar = ({
             + Add {openedProject === null ? "Project" : "Board"}
           </button>
           <IoSettingsSharp
-            className="ml-auto mr-3 my-auto cursor-pointer hover:text-black/50"
+            className="ml-auto mr-3 my-auto cursor-pointer hover:text-black/5.0"
             size={24}
+            onClick={() => setIsShowingSettings(true)}
           />
         </div>
       </div>
@@ -425,6 +429,7 @@ const Sidebar = ({
           onConfirm={handleConfirmDelete}
         />
       )}
+      {isShowingSettings && <SettingsPopup />}
     </>
   );
 };
