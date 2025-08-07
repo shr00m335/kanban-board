@@ -8,7 +8,11 @@ import {
   draggingListIndexAtom,
   draggingListLocationAtom,
 } from "../../stores/dndStore";
-import { openedBoardAtom, openedProjectAtom } from "../../stores/projectStore";
+import {
+  configsAtom,
+  openedBoardAtom,
+  openedProjectAtom,
+} from "../../stores/projectStore";
 import BoardList from "./BoardList";
 
 interface BoardProps {
@@ -20,6 +24,7 @@ const Board = ({ showBanner }: BoardProps): JSX.Element => {
   const [openedProject, setOpenedProject] = useAtom(openedProjectAtom);
   const draggingListLocation = useAtomValue(draggingListLocationAtom);
   const draggingListIndex = useAtomValue(draggingListIndexAtom);
+  const configs = useAtomValue(configsAtom);
 
   const [isAddingBoard, setIsAddingBoard] = React.useState<boolean>(false);
   const [lastSavedTime, setLastSavedTime] = React.useState<string | null>(null);
@@ -117,14 +122,14 @@ const Board = ({ showBanner }: BoardProps): JSX.Element => {
   React.useEffect(() => {
     saveTimer = window.setInterval(async () => {
       await saveProject();
-    }, 10000);
+    }, (configs?.auto_save_interval ?? 60) * 1000);
 
     return () => {
       if (saveTimer !== undefined) {
         clearInterval(saveTimer);
       }
     };
-  }, []);
+  }, [configs]);
 
   return (
     <div className=" px-4 py-2.5 grid grid-rows-[52px_auto] select-none overflow-x-hidden">
@@ -163,27 +168,26 @@ const Board = ({ showBanner }: BoardProps): JSX.Element => {
           draggingListLocation >= openedBoard!.lists.length && (
             <div className="min-w-[260px] h-full rounded-2xl px-4 py-2 ml-4 select-none first:ml-0"></div>
           )}
-        {
-          <div
-            className="grid-rows-[28px_auto_40px] w-[260px] h-full bg-[#b6dfff] rounded-2xl px-4 py-2 ml-4 select-none first:ml-0"
-            style={{
-              display: isAddingBoard ? "grid" : "none",
-            }}
-          >
-            {/* Title */}
-            <input
-              ref={addBoardInputRef}
-              className="text-lg font-bold my-auto"
-              onKeyDown={onAddListInputKeyDown}
-              onBlur={onAddListInputBlur}
-            ></input>
-            <div className="overflow-y-auto h-full"></div>
-            {/* Add Button */}
-            <button className="text-left my-auto text-gray-400 select-none hover:text-gray-600">
-              + Add Item
-            </button>
-          </div>
-        }
+        <div
+          className="grid-rows-[28px_auto_40px] w-[260px] h-full rounded-2xl px-4 py-2 ml-4 select-none first:ml-0"
+          style={{
+            display: isAddingBoard ? "grid" : "none",
+            background: configs?.new_list_default_color ?? "#B6DfFF",
+          }}
+        >
+          {/* Title */}
+          <input
+            ref={addBoardInputRef}
+            className="text-lg font-bold my-auto"
+            onKeyDown={onAddListInputKeyDown}
+            onBlur={onAddListInputBlur}
+          ></input>
+          <div className="overflow-y-auto h-full"></div>
+          {/* Add Button */}
+          <button className="text-left my-auto text-gray-400 select-none hover:text-gray-600">
+            + Add Item
+          </button>
+        </div>
         <button
           className="self-start min-w-10 min-h-10 bg-white flex ml-3 rounded-xl cursor-pointer hover:bg-white/50"
           onClick={onAddListClick}
