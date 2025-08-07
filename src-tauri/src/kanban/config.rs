@@ -32,6 +32,15 @@ pub fn read_configs<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result<Conf
         .app_data_dir()
         .map_err(|e| KanbanError::from_source(KanbanErrorKind::TauriError, e))?
         .join("configs.json");
+    if !fs::exists(&config_path)
+        .map_err(|e| KanbanError::from_source(KanbanErrorKind::IoError, e))?
+    {
+        let default_configs = Configs {
+            autoSaveInterval: 60,
+            newListDefaultColor: "#B6DFFF".to_string(),
+        };
+        save_configs(&app, &default_configs)?;
+    }
     let file_content = fs::read_to_string(&config_path)
         .map_err(|e| KanbanError::from_source(KanbanErrorKind::IoError, e))?;
     let configs: Configs = serde_json::from_str(&file_content)
