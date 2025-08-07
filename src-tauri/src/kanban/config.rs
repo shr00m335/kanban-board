@@ -6,8 +6,8 @@ use crate::errors::kanban_error::{KanbanError, KanbanErrorKind};
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug)]
 pub struct Configs {
-    pub autoSaveInterval: u32,
-    pub newListDefaultColor: String,
+    pub auto_save_interval: u32,
+    pub new_list_default_color: String,
 }
 
 pub fn save_configs<R: tauri::Runtime>(
@@ -36,8 +36,8 @@ pub fn read_configs<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result<Conf
         .map_err(|e| KanbanError::from_source(KanbanErrorKind::IoError, e))?
     {
         let default_configs = Configs {
-            autoSaveInterval: 60,
-            newListDefaultColor: "#B6DFFF".to_string(),
+            auto_save_interval: 60,
+            new_list_default_color: "#B6DFFF".to_string(),
         };
         save_configs(&app, &default_configs)?;
     }
@@ -50,16 +50,19 @@ pub fn read_configs<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result<Conf
 
 #[cfg(test)]
 mod test {
+    use serial_test::serial;
+
     use super::*;
 
     #[test]
+    #[serial]
     fn test_save_configs() {
         // tauri env
         let mock = tauri::test::mock_app();
         let app = mock.app_handle();
         let test_configs = Configs {
-            autoSaveInterval: 300,
-            newListDefaultColor: "#FFFFFF".to_string(),
+            auto_save_interval: 300,
+            new_list_default_color: "#FFFFFF".to_string(),
         };
         let result = save_configs(app, &test_configs);
         assert!(result.is_ok());
@@ -71,20 +74,21 @@ mod test {
             .join("configs.json");
         let config_file_content = fs::read_to_string(&config_path).expect("Failed to read file");
         assert_eq!(
-            "{\"autoSaveInterval\":300,\"newListDefaultColor\":\"#FFFFFF\"}",
+            "{\"auto_save_interval\":300,\"new_list_default_color\":\"#FFFFFF\"}",
             config_file_content
         );
         fs::remove_file(&config_path).expect("Failed to remove file");
     }
 
     #[test]
+    #[serial]
     fn test_read_configs() {
         // tauri env
         let mock = tauri::test::mock_app();
         let app = mock.app_handle();
         let test_configs = Configs {
-            autoSaveInterval: 300,
-            newListDefaultColor: "#FFFFFF".to_string(),
+            auto_save_interval: 300,
+            new_list_default_color: "#FFFFFF".to_string(),
         };
         save_configs(app, &test_configs).expect("Failed to save config");
         let result = read_configs(&app);
