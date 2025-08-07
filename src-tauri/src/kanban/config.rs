@@ -4,6 +4,7 @@ use tauri::Manager;
 
 use crate::errors::kanban_error::{KanbanError, KanbanErrorKind};
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Configs {
     pub autoSaveInterval: u32,
     pub newListDefaultColor: String,
@@ -24,7 +25,9 @@ pub fn save_configs<R: tauri::Runtime>(
         .app_data_dir()
         .map_err(|e| KanbanError::from_source(KanbanErrorKind::TauriError, e))?
         .join("kanban.config");
-    fs::write(&config_path, config_string.join("\n"))
+    let config_json = serde_json::to_string(&configs)
+        .map_err(|e| KanbanError::from_source(KanbanErrorKind::TextError, e))?;
+    fs::write(&config_path, config_json)
         .map_err(|e| KanbanError::from_source(KanbanErrorKind::IoError, e))?;
     Ok(())
 }
@@ -52,7 +55,7 @@ mod test {
             .join("kanban.config");
         let config_file_content = fs::read_to_string(&config_path).expect("Failed to read file");
         assert_eq!(
-            "autoSaveInterval=300\nnewListDefaultColor=#FFFFFF",
+            "{\"autoSaveInterval\":300,\"newListDefaultColor\":\"#FFFFFF\"}",
             config_file_content
         );
         fs::remove_file(&config_path).expect("Failed to remove file");
