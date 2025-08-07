@@ -1,0 +1,60 @@
+use std::fs;
+
+use tauri::Manager;
+
+use crate::errors::kanban_error::{KanbanError, KanbanErrorKind};
+
+pub struct Configs {
+    pub autoSaveInterval: u32,
+    pub newListDefaultColor: String,
+}
+
+pub fn save_configs<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    configs: &Configs,
+) -> Result<(), KanbanError> {
+    let mut config_string: Vec<String> = Vec::new();
+    config_string.push(format!("autoSaveInterval={}", configs.autoSaveInterval));
+    config_string.push(format!(
+        "newListDefaultColor={}",
+        configs.newListDefaultColor
+    ));
+    let config_path = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| KanbanError::from_source(KanbanErrorKind::TauriError, e))?
+        .join("kanban.config");
+    fs::write(&config_path, config_string.join("\n"))
+        .map_err(|e| KanbanError::from_source(KanbanErrorKind::IoError, e))?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_save_configs() {
+        // tauri env
+        let mock = tauri::test::mock_app();
+        let app = mock.app_handle();
+        let test_configs = Configs {
+            autoSaveInterval: 300,
+            newListDefaultColor: "#FFFFFF".to_string(),
+        };
+        let result = save_configs(app, &test_configs);
+        assert!(result.is_ok());
+        let config_path = app
+            .path()
+            .app_data_dir()
+            .map_err(|e| KanbanError::from_source(KanbanErrorKind::TauriError, e))
+            .expect("Failed to get path")
+            .join("kanban.config");
+        let config_file_content = fs::read_to_string(&config_path).expect("Failed to read file");
+        assert_eq!(
+            "autoSaveInterval=300\nnewListDefaultColor=#FFFFFF",
+            config_file_content
+        );
+        fs::remove_file(&config_path).expect("Failed to remove file");
+    }
+}
