@@ -56,7 +56,10 @@ function App() {
   }, []);
 
   return (
-    <main className="w-screen h-screen grid grid-cols-[234px_auto] overflow-hidden">
+    <main
+      className="w-screen h-screen grid grid-cols-[234px_auto] overflow-hidden"
+      onContextMenu={(e) => e.preventDefault()}
+    >
       {configs !== null ? (
         <>
           <Sidebar
