@@ -59,6 +59,6 @@ Install the app as you would any native application for your OS.
 
 ---
 
-## 📚 License
+## License
 
 MIT
