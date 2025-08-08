@@ -49,3 +49,16 @@ Designed for individual use, this app lets you organize tasks and projects visua
    ```bash
    npm run tauri dev
    ```
+
+---
+
+## Installation
+
+After building, you will find platform-specific installers in the `src-tauri/target/release/bundle` directory.  
+Install the app as you would any native application for your OS.
+
+---
+
+## 📚 License
+
+MIT
